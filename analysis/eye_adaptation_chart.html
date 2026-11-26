@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>闪白事故 · 曝光适应取舍分析</title>
+<script>
+if (new URLSearchParams(location.search).get("theme") === "dark")
+  localStorage.setItem("ea-theme", "dark");
+if (localStorage.getItem("ea-theme") === "dark")
+  document.documentElement.setAttribute("data-theme", "dark");
+</script>
+<style>
+.viz-root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --page: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --critical: #d03b3b;
+  --band: rgba(42,120,214,0.08);
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --page: #0d0d0d;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255,255,255,0.10);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --critical: #e66767;
+  --band: rgba(57,135,229,0.14);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.viz-root { max-width: 1180px; margin: 0 auto; padding: 28px 24px 40px; color: var(--text-primary); }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.sub { color: var(--text-secondary); font-size: 13px; margin: 0 0 18px; line-height: 1.55; }
+.controls { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+button {
+  font: inherit; font-size: 12.5px; color: var(--text-secondary);
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 7px; padding: 6px 12px; cursor: pointer;
+}
+button:hover { color: var(--text-primary); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.panel {
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 14px 8px;
+}
+.panel.wide { grid-column: 1 / -1; }
+.panel h2 { font-size: 13.5px; margin: 0 0 2px; }
+.panel .note { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; line-height: 1.5; }
+svg { width: 100%; height: auto; display: block; }
+.axis text { fill: var(--muted); font-size: 10.5px; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.axisline { stroke: var(--baseline); stroke-width: 1; }
+.series { fill: none; stroke-width: 2; }
+.dot { stroke: var(--surface-1); stroke-width: 1.5; }
+.endlabel { font-size: 11px; font-weight: 600; dominant-baseline: middle; }
+.budget { stroke: var(--critical); stroke-width: 1.4; stroke-dasharray: 5 4; fill: none; }
+.budget-label { fill: var(--critical); font-size: 10.5px; font-weight: 600; }
+.crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; pointer-events: none; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 4px 0 0; font-size: 11.5px; color: var(--text-secondary); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.tooltip {
+  position: fixed; pointer-events: none; opacity: 0; z-index: 10;
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 11.5px; line-height: 1.6;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.14); min-width: 150px;
+}
+.tooltip b { color: var(--text-primary); }
+.tooltip .row { display: flex; justify-content: space-between; gap: 14px; color: var(--text-secondary); }
+.tooltip .row i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; font-style: normal; }
+table.data { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 10px; }
+table.data th, table.data td { padding: 5px 8px; border-bottom: 1px solid var(--grid); text-align: right; font-variant-numeric: tabular-nums; }
+table.data th:first-child, table.data td:first-child { text-align: left; color: var(--text-secondary); }
+table.data th { color: var(--muted); font-weight: 600; }
+.tablewrap { max-height: 320px; overflow: auto; display: none; }
+.tablewrap.on { display: block; }
+.annotation { font-size: 10.5px; fill: var(--text-secondary); font-weight: 600; }
+.zone-label { font-size: 10px; fill: var(--muted); }
+.foot { color: var(--muted); font-size: 11px; margin-top: 16px; line-height: 1.6; }
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="viz-root" id="root">
+  <h1>闪白事故：自动曝光的过冲—适应时间取舍</h1>
+  <p class="sub">
+    模型：log10 亮度域，boxcar 平滑窗口 W 帧 → 目标曝光 E*=log₁₀K−M → 一阶 EMA 适应
+    Eₜ=Eₜ₋₁+a(E*ₜ−Eₜ₋₁)，a=1−e^(−Δt/τ)，τ=<b id="c-tau"></b>s（a=<b id="c-a"></b>/帧，
+    60fps）。1 JND=0.10 log10；判据：次生过冲 ≤ 1 JND 且适应时间 ≤ 1.0 s。
+    图中过冲均剔除高光帧本身（直接闪光不可由曝光消除，单列于说明）。
+  </p>
+  <div class="controls">
+    <button id="themeBtn">切换深色</button>
+    <button id="tableBtn">显示数据表</button>
+  </div>
+
+  <div class="grid">
+    <div class="panel" id="pA">
+      <h2>A. 次生过冲 vs 平滑窗口 W（100× 亮度背景上的单帧高光）</h2>
+      <p class="note">曝光空间峰偏差（JND）。显示空间约为其 0.85 倍（Reinhard 工作点增益 g(K)=0.847），数据表中给出。</p>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--series-1)"></i>10× 高光 Δs=1.0 log10</span>
+        <span><i class="sw" style="background:var(--series-2)"></i>100× 高光 Δs=2.0</span>
+        <span><i class="sw" style="background:var(--series-3)"></i>1000× 高光 Δs=3.0</span>
+        <span><i class="sw" style="background:var(--critical)"></i>1 JND 预算</span>
+      </div>
+      <svg id="svgA" viewBox="0 0 540 300"></svg>
+      <div class="tablewrap" id="tblA"></div>
+    </div>
+
+    <div class="panel" id="pB">
+      <h2>B. 适应时间 vs 平滑窗口 W（三档亮度阶跃）</h2>
+      <p class="note">进入终值 ±1 JND 带并保持的首帧时间。窗口越长适应越慢；红色阴影为 1000× 阶跃超出 1 s 预算的区域。</p>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--series-1)"></i>10× 阶跃</span>
+        <span><i class="sw" style="background:var(--series-2)"></i>100× 阶跃</span>
+        <span><i class="sw" style="background:var(--series-3)"></i>1000× 阶跃</span>
+        <span><i class="sw" style="background:var(--critical)"></i>1.0 s 预算</span>
+      </div>
+      <svg id="svgB" viewBox="0 0 540 300"></svg>
+      <div class="tablewrap" id="tblB"></div>
+    </div>
+
+    <div class="panel wide" id="pC">
+      <h2>C. 事故回放：100× 室内→室外阶跃，W=0（瞬时亮度做目标）时的可见闪白</h2>
+      <p class="note">显示偏差 log₁₀(D/D∞)（JND）。首帧 7.85 JND 的白，按时间常数 τ=0.25 s 指数收敛；蓝带 ±1 JND 为不可察觉区：显示端 0.700 s 进入（曝光端按 E 误差算是 0.733 s，面板 B 口径）。</p>
+      <svg id="svgC" viewBox="0 0 1100 260"></svg>
+    </div>
+  </div>
+
+  <p class="foot" id="foot"></p>
+  <div class="tooltip" id="tip"></div>
+</div>
+
+<script src="chart_data.js"></script>
+<script>
+const D = CHART_DATA;
+const C = D.constants;
+document.getElementById("c-tau").textContent = C.tau_s;
+document.getElementById("c-a").textContent = C.a;
+const css = n => getComputedStyle(document.getElementById("root")).getPropertyValue(n).trim();
+const S1 = () => css("--series-1"), S2 = () => css("--series-2"), S3 = () => css("--series-3"),
+      CRIT = () => css("--critical"), GRID = () => css("--grid"), BASE = () => css("--baseline"),
+      MUTED = () => css("--muted"), INK2 = () => css("--text-secondary"), BAND = () => css("--band");
+const tip = document.getElementById("tip");
+
+function scales(xs, ys, m) {
+  const xmin = Math.min(...xs), xmax = Math.max(...xs);
+  const ymin = Math.min(...ys.flat()), ymax = Math.max(...ys.flat());
+  return {
+    x: v => m.l + (v - xmin) / (xmax - xmin) * (m.w),
+    y: v => m.t + m.h - (v - ymin) / (ymax - ymin) * m.h,
+    xmin, xmax, ymin, ymax
+  };
+}
+
+function frame(svg) {
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (t, a) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; };
+  return el;
+}
+
+function lineChart(svgId, xs, series, opts) {
+  const svg = document.getElementById(svgId);
+  const W = +svg.viewBox.baseVal.width, H = +svg.viewBox.baseVal.height;
+  const m = { l: 46, r: 62, t: 12, w: W - 46 - 62, h: H - 12 - 46 };
+  const sc = scales(xs, series.map(s => s.values), m);
+  const el = frame(svg);
+  // grid + y ticks
+  const nt = 5;
+  for (let i = 0; i <= nt; i++) {
+    const v = sc.ymin + (sc.ymax - sc.ymin) * i / nt;
+    const y = sc.y(v);
+    el("line", { x1: m.l, x2: m.l + m.w, y1: y, y2: y, class: "gridline" });
+    const t = el("text", { x: m.l - 6, y: y + 3.5, "text-anchor": "end", class: "axis" });
+    t.textContent = v.toFixed(opts.yf ?? 1);
+  }
+  // x ticks (two lines: frame count / milliseconds)
+  const xt = opts.xticks;
+  xt.forEach(v => {
+    const x = sc.x(v);
+    el("line", { x1: x, x2: x, y1: m.t, y2: m.t + m.h, class: "gridline" });
+    const t = el("text", { x, y: m.t + m.h + 15, "text-anchor": "middle", class: "axis" });
+    const l1 = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+    l1.textContent = `${v}帧`; l1.setAttribute("x", x); l1.setAttribute("dy", "0");
+    const l2 = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+    l2.textContent = `${Math.round(v / C.fps * 1000)}ms`;
+    l2.setAttribute("x", x); l2.setAttribute("dy", "12"); l2.setAttribute("opacity", "0.75");
+    t.appendChild(l1); t.appendChild(l2);
+  });
+  el("line", { x1: m.l, x2: m.l, y1: m.t, y2: m.t + m.h, class: "axisline" });
+  el("line", { x1: m.l, x2: m.l + m.w, y1: m.t + m.h, y2: m.t + m.h, class: "axisline" });
+  const xl = el("text", { x: m.l + m.w / 2, y: H - 4, "text-anchor": "middle", class: "axis" });
+  xl.textContent = opts.xlabel;
+  const yl = el("text", { x: 14, y: m.t + m.h / 2, "text-anchor": "middle",
+      transform: `rotate(-90 14 ${m.t + m.h / 2})`, class: "axis" });
+  yl.textContent = opts.ylabel;
+
+  // shaded zone
+  if (opts.zone) {
+    const z = opts.zone;
+    const zx = sc.x(z.from);
+    el("rect", { x: zx, y: m.t, width: m.l + m.w - zx,
+      height: m.h, fill: "var(--critical)", opacity: 0.07 });
+    const zt = el("text", { x: m.l + m.w - 4, y: m.t + 12,
+      "text-anchor": "end", class: "zone-label" });
+    zt.textContent = z.label;
+  }
+  // budget lines
+  (opts.budgets || []).forEach(b => {
+    const y = sc.y(b.v);
+    el("line", { x1: m.l, x2: m.l + m.w, y1: y, y2: y, class: "budget" });
+    const t = el("text", { x: m.l + m.w + 4, y: y + 3.5, class: "budget-label" });
+    t.textContent = b.label;
+  });
+  // series
+  series.forEach((s, si) => {
+    const d = xs.map((x, i) => (i ? "L" : "M") + sc.x(x).toFixed(1) + " " + sc.y(s.values[i]).toFixed(1)).join(" ");
+    el("path", { d, class: "series", stroke: s.color });
+    const last = s.values[s.values.length - 1];
+    const dot = el("circle", { cx: sc.x(xs[xs.length - 1]), cy: sc.y(last), r: 3.5, class: "dot", fill: s.color });
+    const lab = el("text", { x: m.l + m.w + 6, y: sc.y(last), class: "endlabel", fill: INK2() });
+    lab.textContent = s.endLabel;
+  });
+  // annotations
+  (opts.marks || []).forEach(mk => {
+    const x = sc.x(mk.x), y = sc.y(mk.y);
+    el("circle", { cx: x, cy: y, r: 4, fill: "var(--surface-1)", stroke: mk.color, "stroke-width": 2 });
+    const t = el("text", { x: x + (mk.dx || 7), y: y + (mk.dy || -7), class: "annotation", fill: INK2() });
+    t.textContent = mk.text;
+  });
+  // crosshair + hover
+  const ch = el("line", { x1: 0, x2: 0, y1: m.t, y2: m.t + m.h, class: "crosshair" });
+  const hover = el("rect", { x: m.l, y: m.t, width: m.w, height: m.h, fill: "transparent" });
+  hover.addEventListener("mousemove", ev => {
+    const rect = svg.getBoundingClientRect();
+    const px = (ev.clientX - rect.left) / rect.width * W;
+    let idx = 0, best = 1e9;
+    xs.forEach((x, i) => { const d = Math.abs(sc.x(x) - px); if (d < best) { best = d; idx = i; } });
+    const hx = sc.x(xs[idx]);
+    ch.setAttribute("x1", hx); ch.setAttribute("x2", hx); ch.style.opacity = 1;
+    tip.innerHTML = `<b>${opts.tipTitle(xs[idx])}</b>` + series.map(s =>
+      `<div class="row"><span><i style="background:${s.color}"></i>${s.name}</span>` +
+      `<span>${s.tipFmt ? s.tipFmt(s.values[idx], idx) : s.values[idx].toFixed(2)}</span></div>`).join("");
+    tip.style.opacity = 1;
+    let tx = ev.clientX + 14, ty = ev.clientY + 14;
+    if (tx + 200 > window.innerWidth) tx = ev.clientX - 210;
+    tip.style.left = tx + "px"; tip.style.top = ty + "px";
+  });
+  hover.addEventListener("mouseleave", () => { ch.style.opacity = 0; tip.style.opacity = 0; });
+  return sc;
+}
+
+const ws = D.W_frames;
+const cols = [() => S1(), () => S2(), () => S3()];
+
+// ---- Panel A: overshoot vs W ----
+const glints = [
+  { key: "1.0", name: "10× 高光 (Δs=1.0)", endLabel: "10×", color: S1() },
+  { key: "2.0", name: "100× 高光 (Δs=2.0)", endLabel: "100×", color: S2() },
+  { key: "3.0", name: "1000× 高光 (Δs=3.0)", endLabel: "1000×", color: S3() },
+].map(g => ({
+  ...g,
+  values: D.overshoot[g.key].dE,
+  tipFmt: (v, i) => `${v.toFixed(2)} JND（显示 ${D.overshoot[g.key].disp[i].toFixed(2)}）`
+}));
+lineChart("svgA", ws, glints, {
+  xlabel: "平滑窗口 W（帧 / ms）", ylabel: "过冲 (JND)",
+  xfmt: v => `${v}帧/${Math.round(v / C.fps * 1000)}ms`,
+  xticks: [0, 30, 60, 90],
+  budgets: [{ v: 1, label: "1 JND" }],
+  tipTitle: w => `W = ${w} 帧 (${Math.round(w / C.fps * 1000)} ms)`,
+  marks: [
+    { x: D.w_min["2.0"], y: 1.0, color: S2(), text: `W_min=${D.w_min["2.0"]} (100×高光)`, dx: -78, dy: -9 },
+    { x: D.w_min["3.0"], y: 1.0, color: S3(), text: `W_min=${D.w_min["3.0"]} (1000×高光)`, dx: 8, dy: 16 },
+  ]
+});
+
+// ---- Panel B: adaptation time vs W ----
+const jumps = ["10x", "100x", "1000x"].map((k, i) => ({
+  name: `${k} 阶跃`, endLabel: k, color: cols[i](), values: D.adapt[k],
+  tipFmt: v => `${v.toFixed(3)} s`
+}));
+lineChart("svgB", ws, jumps, {
+  xlabel: "平滑窗口 W（帧 / ms）", ylabel: "适应时间 (s)",
+  xfmt: v => `${v}帧/${Math.round(v / C.fps * 1000)}ms`,
+  xticks: [0, 30, 60, 90],
+  budgets: [{ v: 1.0, label: "1.0 s" }],
+  zone: { from: D.conflict.w_time_limit, label: "1000× 阶跃超 1 s 区" },
+  tipTitle: w => `W = ${w} 帧 (${Math.round(w / C.fps * 1000)} ms)`,
+  marks: [
+    { x: D.conflict.w_min, y: D.conflict.t_adapt_1000x_at_wmin, color: S3(),
+      text: `W=${D.conflict.w_min}: 1.067 s ✕`, dx: -92, dy: -9 },
+    { x: D.conflict.w_time_limit, y: 1.0, color: CRIT(),
+      text: `时间极限 W=${D.conflict.w_time_limit}`, dx: -70, dy: 18 },
+  ]
+});
+
+// ---- Panel C: flash decay trace ----
+(function () {
+  const svg = document.getElementById("svgC");
+  const W = +svg.viewBox.baseVal.width, H = +svg.viewBox.baseVal.height;
+  const m = { l: 50, r: 30, t: 14, w: W - 80, h: H - 14 - 36 };
+  const tr = D.step_trace_100x;
+  const xs = tr.map(p => p.t), ys = tr.map(p => p.disp_jnd);
+  const xmax = 2.0, ymax = 8.5;
+  const X = t => m.l + t / xmax * m.w, Y = v => m.t + m.h - v / ymax * m.h;
+  const el = frame(svg);
+  for (let v = 0; v <= 8; v += 2) {
+    el("line", { x1: m.l, x2: m.l + m.w, y1: Y(v), y2: Y(v), class: "gridline" });
+    const t = el("text", { x: m.l - 6, y: Y(v) + 3.5, "text-anchor": "end", class: "axis" });
+    t.textContent = v;
+  }
+  [0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0].forEach(t => {
+    el("line", { x1: X(t), x2: X(t), y1: m.t, y2: m.t + m.h, class: "gridline" });
+    const tx = el("text", { x: X(t), y: m.t + m.h + 16, "text-anchor": "middle", class: "axis" });
+    tx.textContent = t.toFixed(2) + "s";
+  });
+  el("line", { x1: m.l, x2: m.l, y1: m.t, y2: m.t + m.h, class: "axisline" });
+  el("line", { x1: m.l, x2: m.l + m.w, y1: m.t + m.h, y2: m.t + m.h, class: "axisline" });
+  // +/-1 JND imperceptible band
+  el("rect", { x: m.l, y: Y(1), width: m.w, height: Y(-1) - Y(1), fill: BAND() });
+  const bt = el("text", { x: m.l + m.w - 4, y: Y(1) - 4, "text-anchor": "end", class: "zone-label" });
+  bt.textContent = "±1 JND 不可察觉带";
+  el("line", { x1: m.l, x2: m.l + m.w, y1: Y(0), y2: Y(0), class: "axisline" });
+  const d = tr.map((p, i) => (i ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.disp_jnd).toFixed(1)).join(" ");
+  el("path", { d, class: "series", stroke: S2() });
+  // tau and settle markers
+  const mk = (t, txt, dy) => {
+    el("line", { x1: X(t), x2: X(t), y1: m.t, y2: m.t + m.h, stroke: MUTED(), "stroke-width": 1, "stroke-dasharray": "3 3" });
+    const tx = el("text", { x: X(t) + 5, y: m.t + 12 + dy, class: "zone-label", fill: INK2() });
+    tx.textContent = txt;
+  };
+  mk(C.tau_s, "τ = 0.25 s（残差 37%）", 0);
+  mk(3 * C.tau_s, "3τ = 0.75 s", 14);
+  const st = tr.find(p => Math.abs(p.disp_jnd) <= 1).t;
+  el("circle", { cx: X(st), cy: Y(1), r: 4, fill: "var(--surface-1)", stroke: S2(), "stroke-width": 2 });
+  const stt = el("text", { x: X(st) - 8, y: Y(1) - 8, "text-anchor": "end", class: "annotation" });
+  stt.textContent = `进入 ±1 JND：${st.toFixed(3)} s`;
+  const f0 = el("text", { x: X(0) + 8, y: Y(ys[0]) - 8, class: "annotation" });
+  f0.textContent = `首帧白峰 ${ys[0].toFixed(2)} JND`;
+  const xl = el("text", { x: m.l + m.w / 2, y: H - 4, "text-anchor": "middle", class: "axis" });
+  xl.textContent = "阶跃后时间 (s)";
+  const yl = el("text", { x: 14, y: m.t + m.h / 2, "text-anchor": "middle",
+      transform: `rotate(-90 14 ${m.t + m.h / 2})`, class: "axis" });
+  yl.textContent = "显示偏差 (JND)";
+  // hover
+  const ch = el("line", { x1: 0, x2: 0, y1: m.t, y2: m.t + m.h, class: "crosshair" });
+  const hover = el("rect", { x: m.l, y: m.t, width: m.w, height: m.h, fill: "transparent" });
+  hover.addEventListener("mousemove", ev => {
+    const rect = svg.getBoundingClientRect();
+    const px = (ev.clientX - rect.left) / rect.width * W;
+    const t = Math.max(0, (px - m.l) / m.w * xmax);
+    let idx = 0, best = 1e9;
+    xs.forEach((x, i) => { const d2 = Math.abs(x - t); if (d2 < best) { best = d2; idx = i; } });
+    ch.setAttribute("x1", X(xs[idx])); ch.setAttribute("x2", X(xs[idx])); ch.style.opacity = 1;
+    tip.innerHTML = `<b>t = ${xs[idx].toFixed(3)} s</b>
+      <div class="row"><span>显示偏差</span><span>${ys[idx].toFixed(2)} JND</span></div>`;
+    tip.style.opacity = 1;
+    let tx = ev.clientX + 14, ty = ev.clientY + 14;
+    if (tx + 200 > window.innerWidth) tx = ev.clientX - 210;
+    tip.style.left = tx + "px"; tip.style.top = ty + "px";
+  });
+  hover.addEventListener("mouseleave", () => { ch.style.opacity = 0; tip.style.opacity = 0; });
+})();
+
+// ---- tables ----
+function table(id, head, rows) {
+  const t = document.createElement("table");
+  t.className = "data";
+  t.innerHTML = "<thead><tr>" + head.map(h => `<th>${h}</th>`).join("") + "</tr></thead>" +
+    "<tbody>" + rows.map(r => "<tr>" + r.map(c => `<td>${c}</td>`).join("") + "</tr>").join("") + "</tbody>";
+  document.getElementById(id).appendChild(t);
+}
+table("tblA",
+  ["W (帧/ms)", "10× 过冲 dE/显", "100× 过冲 dE/显", "1000× 过冲 dE/显"],
+  ws.filter((_, i) => i % 3 === 0).map((w, k) => {
+    const i = ws.indexOf(w);
+    return [`${w} / ${Math.round(w / C.fps * 1000)}ms`,
+      `${D.overshoot["1.0"].dE[i]} / ${D.overshoot["1.0"].disp[i]}`,
+      `${D.overshoot["2.0"].dE[i]} / ${D.overshoot["2.0"].disp[i]}`,
+      `${D.overshoot["3.0"].dE[i]} / ${D.overshoot["3.0"].disp[i]}`];
+  }));
+table("tblB",
+  ["W (帧/ms)", "10× t_adapt (s)", "100× t_adapt (s)", "1000× t_adapt (s)"],
+  ws.filter((_, i) => i % 3 === 0).map(w => {
+    const i = ws.indexOf(w);
+    return [`${w} / ${Math.round(w / C.fps * 1000)}ms`,
+      D.adapt["10x"][i], D.adapt["100x"][i], D.adapt["1000x"][i]];
+  }));
+
+// ---- controls ----
+const root = document.documentElement;
+if (root.getAttribute("data-theme") === "dark")
+  document.getElementById("themeBtn").textContent = "切换浅色";
+document.getElementById("themeBtn").addEventListener("click", () => {
+  const dark = root.getAttribute("data-theme") === "dark";
+  localStorage.setItem("ea-theme", dark ? "light" : "dark");
+  location.reload();
+});
+document.getElementById("tableBtn").addEventListener("click", () => {
+  document.querySelectorAll(".tablewrap").forEach(t => t.classList.toggle("on"));
+});
+
+document.getElementById("foot").textContent =
+  `结论：Δs=1 高光在 W=0 即达标（EMA 自身滤波 0.64 JND）；Δs=2 需 W≥${D.w_min["2.0"]}（${Math.round(D.w_min["2.0"] / C.fps * 1000)} ms），` +
+  `Δs=3 需 W≥${D.w_min["3.0"]}（${Math.round(D.w_min["3.0"] / C.fps * 1000)} ms）。三档阶跃在 Δs≤2 时两项判据同时满足；` +
+  `1000× 阶跃叠加 1000× 高光时冲突：过冲达标要 W≥${D.conflict.w_min}（适应 1.067 s 超时），` +
+  `守住 1 s 只能 W≤${D.conflict.w_time_limit}（过冲 1.16 JND 超标）——此时牺牲项为适应时间。`;
+</script>
+</body>
+</html>
