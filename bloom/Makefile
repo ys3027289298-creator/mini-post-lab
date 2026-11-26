@@ -1,13 +1,17 @@
 CC ?= gcc
 CFLAGS ?= -O2 -std=c11 -Wall -Wextra
 
-all: bloom
+all: bloom pyramid
 
 bloom: src/bloom.c
 	$(CC) $(CFLAGS) $< -o $@ -lm
 
-test: bloom
+pyramid: src/pyramid.c
+	$(CC) $(CFLAGS) $< -o $@ -lm
+
+test: bloom pyramid
 	./bloom
+	./pyramid
 
 clean:
-	rm -f bloom
+	rm -f bloom pyramid
