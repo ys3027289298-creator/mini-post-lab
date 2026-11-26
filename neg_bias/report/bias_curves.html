@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>减法负值与偏置取舍 — mini-post-lab</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --page: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --s1: #2a78d6;   /* bright-pass */
+  --s2: #eb6834;   /* unsharp */
+  --s3: #1baf7a;   /* CA */
+  --target: #d03b3b;
+  --budget: #6250d6;
+  --border: rgba(11,11,11,0.10);
+  background: var(--page);
+  color: var(--text-primary);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  margin: 0;
+  padding: 32px 40px 48px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --page: #0d0d0d;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --target: #e66767;
+    --budget: #9085e9;
+    --border: rgba(255,255,255,0.10);
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --surface-1: #1a1a19; --page: #0d0d0d; --text-primary: #f0efec;
+  --text-secondary: #c3c2b7; --muted: #898781; --grid: #2c2c2a;
+  --axis: #383835; --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --target: #e66767; --budget: #9085e9; --border: rgba(255,255,255,0.10);
+}
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 16px; margin: 28px 0 8px; }
+.sub { color: var(--text-secondary); margin: 0 0 20px; max-width: 920px; }
+.legend { display: flex; flex-wrap: wrap; gap: 18px; margin: 12px 0 4px; }
+.legend .item { display: flex; align-items: center; gap: 7px; color: var(--text-secondary); }
+.legend .key { width: 18px; height: 2px; border-radius: 1px; }
+.legend .key.dash { height: 0; border-top: 2px dashed var(--target); background: none; }
+.legend .key.dash2 { height: 0; border-top: 2px dashed var(--budget); background: none; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(320px, 1fr)); gap: 18px; }
+.card {
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 14px 8px; position: relative;
+}
+.card h3 { margin: 0 0 2px; font-size: 14px; font-weight: 600; }
+.card .row-label { color: var(--muted); font-size: 12px; margin: 0 0 6px; }
+svg { width: 100%; height: auto; display: block; }
+.axis-line { stroke: var(--axis); stroke-width: 1; }
+.grid-line { stroke: var(--grid); stroke-width: 1; }
+.tick-label { fill: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.axis-title { fill: var(--text-secondary); font-size: 11px; }
+.series { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.end-label { font-size: 10.5px; font-weight: 600; dominant-baseline: middle; }
+.ref-line { stroke-width: 1.5; stroke-dasharray: 5 4; fill: none; }
+.crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; visibility: hidden; }
+.hover-dot { r: 4.5; stroke: var(--surface-1); stroke-width: 2; visibility: hidden; }
+.tooltip {
+  position: absolute; pointer-events: none; visibility: hidden; z-index: 5;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.14);
+  min-width: 178px;
+}
+.tooltip .tt-title { color: var(--text-secondary); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.tooltip .tt-row { display: flex; align-items: center; gap: 7px; margin: 2px 0; }
+.tooltip .tt-key { width: 12px; height: 2px; border-radius: 1px; flex: none; }
+.tooltip .tt-val { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--text-primary); font-weight: 600; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+th { color: var(--text-secondary); font-weight: 600; border-bottom: 1px solid var(--axis); }
+td.pass-yes { color: var(--s3); font-weight: 600; }
+td.pass-no { color: var(--target); font-weight: 600; }
+.theme-btn {
+  float: right; border: 1px solid var(--border); background: var(--surface-1);
+  color: var(--text-secondary); border-radius: 7px; padding: 5px 12px;
+  font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="viz-root" id="root">
+  <button class="theme-btn" id="themeBtn" type="button">切换深色</button>
+  <h1>色调映射前三步减法：负值产生与偏置取舍</h1>
+  <p class="sub">横轴为减法前加入的偏置 b（HDR 辐射度单位，对数轴）。上排：钳零前负值像素占比，红色虚线为达标线 1/10000；下排：偏置经 Reinhard 后实现的整帧平均亮度抬升，紫色虚线为预算线半个量化级 1/512≈0.001953。两线与曲线的关系即取舍依据。</p>
+
+  <div class="legend" id="legend"></div>
+
+  <h2>负值像素占比 vs 偏置</h2>
+  <div class="grid3" id="ratioRow"></div>
+  <h2>实现亮度抬升 vs 偏置</h2>
+  <div class="grid3" id="liftRow"></div>
+
+  <h2>逐档逐步统计表（所有数值均可在表中核对，不依赖悬浮提示）</h2>
+  <div style="overflow-x:auto">
+  <table id="statTable">
+    <thead><tr>
+      <th>场景</th><th>减法步骤</th><th>负值像素数</th><th>占比</th><th>最小负值</th>
+      <th>达标最小偏置 b*</th><th>b* 处亮度抬升</th><th>半量化级达标?</th>
+      <th>预算耗尽偏置 b_b</th><th>b_b 处残余负值数</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+  <p class="note">合成场景参数：1920×1080，阈值 T=1.0，盒式模糊半径 1，复合权重 bloom 0.3 / unsharp 0.5 / CA 0.5；数据由 neg_bias 脚手架确定性生成（种子 101/202/303）。</p>
+</div>
+
+<script src="data.js"></script>
+<script>
+const D = window.NEG_BIAS_DATA;
+const SERIES = [
+  { slug: "bloom",   label: "高光提取 L−T",     color: "var(--s1)" },
+  { slug: "sharpen", label: "锐化 c−blur(c)",   color: "var(--s2)" },
+  { slug: "ca",      label: "色差 R−B",         color: "var(--s3)" },
+];
+const SCENE_CN = { dark: "暗档 (base 0.05)", mid: "中档 (base 0.35)", bright: "亮档 (base 1.5)" };
+const STAGE_CN = { bright_pass: "高光提取 L−T", unsharp: "锐化 c−blur(c)", ca: "色差 R−B" };
+const TARGET = 1e-4, BUDGET = 1 / 512;
+const PW = 360, PH = 215, ML = 58, MR = 12, MT = 12, MB = 34;
+const XMIN = 1e-8, XMAX = 200;
+
+const log10 = x => Math.log10(Math.max(x, 1e-12));
+const sx = b => ML + (log10(b) - log10(XMIN)) / (log10(XMAX) - log10(XMIN)) * (PW - ML - MR);
+function sy(v, ymin, ymax) {
+  const raw = MT + (1 - (log10(v) - log10(ymin)) / (log10(ymax) - log10(ymin))) * (PH - MT - MB);
+  return Math.min(PH - MB, Math.max(MT, raw));
+}
+const fmt = v => {
+  if (v === 0) return "0";
+  const a = Math.abs(v);
+  if (a >= 100) return v.toFixed(1);
+  if (a >= 1) return v.toFixed(3);
+  if (a >= 1e-3) return v.toFixed(4);
+  return v.toExponential(1);
+};
+const sup = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
+              "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+const pow10label = p => "10" + String(p).split("").map(c => sup[c]).join("");
+
+function buildPanel(rowEl, scene, kind) {
+  const isRatio = kind === "ratio";
+  const ymin = isRatio ? 1e-5 : 1e-6, ymax = 1;
+  const refVal = isRatio ? TARGET : BUDGET;
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML =
+    `<h3>${SCENE_CN[scene]}</h3>` +
+    `<p class="row-label">${isRatio ? "负值像素占比（对数轴）" : "实现亮度抬升（对数轴）"}</p>` +
+    `<svg viewBox="0 0 ${PW} ${PH}" role="img" aria-label="${scene} ${kind}"></svg>` +
+    `<div class="tooltip"></div>`;
+  rowEl.appendChild(card);
+  const svg = card.querySelector("svg");
+  const NS = "http://www.w3.org/2000/svg";
+  const defs = document.createElementNS(NS, "defs");
+  defs.innerHTML = `<clipPath id="clip-${scene}-${kind}"><rect x="${ML}" y="${MT}" width="${PW - ML - MR}" height="${PH - MT - MB}"/></clipPath>`;
+  svg.appendChild(defs);
+  const el = (n, attrs) => { const e = document.createElementNS(NS, n); for (const k in attrs) e.setAttribute(k, attrs[k]); svg.appendChild(e); return e; };
+
+  // horizontal grid + y ticks
+  for (let p = Math.ceil(log10(ymin)); p <= 0; p++) {
+    const v = Math.pow(10, p), y = sy(v, ymin, ymax);
+    el("line", { class: "grid-line", x1: ML, x2: PW - MR, y1: y, y2: y });
+    const t = el("text", { class: "tick-label", x: ML - 6, y: y + 3, "text-anchor": "end" });
+    t.textContent = v >= 1e-3 ? fmt(v) : pow10label(p);
+  }
+  // x ticks
+  for (let p = -8; p <= 2; p += 2) {
+    const b = Math.pow(10, p), x = sx(b);
+    el("line", { class: "grid-line", x1: x, x2: x, y1: MT, y2: PH - MB });
+    const t = el("text", { class: "tick-label", x: x, y: PH - MB + 14, "text-anchor": "middle" });
+    t.textContent = pow10label(p);
+  }
+  el("line", { class: "axis-line", x1: ML, x2: ML, y1: MT, y2: PH - MB });
+  el("line", { class: "axis-line", x1: ML, x2: PW - MR, y1: PH - MB, y2: PH - MB });
+  const xt = el("text", { class: "axis-title", x: (ML + PW - MR) / 2, y: PH - 2, "text-anchor": "middle" });
+  xt.textContent = "偏置 b";
+  const yt = el("text", { class: "axis-title", x: 14, y: (MT + PH - MB) / 2, "text-anchor": "middle",
+                          transform: `rotate(-90 14 ${(MT + PH - MB) / 2})` });
+  yt.textContent = isRatio ? "负值占比" : "亮度抬升";
+
+  // reference line
+  const ry = sy(refVal, ymin, ymax);
+  el("line", { class: "ref-line", x1: ML, x2: PW - MR, y1: ry, y2: ry,
+               stroke: isRatio ? "var(--target)" : "var(--budget)" });
+  const rl = el("text", { class: "tick-label", x: ML + 6, y: ry - 4, "text-anchor": "start",
+                          fill: isRatio ? "var(--target)" : "var(--budget)" });
+  rl.textContent = isRatio ? "达标线 1e-4" : "预算线 1/512";
+
+  // series paths (identity is carried by the legend, tooltips and table;
+  // no end labels — series converge at the right edge, so they would collide)
+  const idx = isRatio ? 1 : 2;
+  SERIES.forEach(s => {
+    const pts = D.curves[scene][s.slug].filter(p => p[0] > 0);
+    const d = pts.map((p, i) => (i ? "L" : "M") + sx(p[0]).toFixed(1) + " " + sy(p[idx], ymin, ymax).toFixed(1)).join(" ");
+    el("path", { class: "series", d, stroke: s.color,
+                 "clip-path": `url(#clip-${scene}-${kind})` });
+  });
+
+  // crosshair + hover dots + tooltip
+  const ch = el("line", { class: "crosshair", y1: MT, y2: PH - MB });
+  const dots = SERIES.map(s => el("circle", { class: "hover-dot", fill: s.color }));
+  const tip = card.querySelector(".tooltip");
+  card.addEventListener("pointermove", ev => {
+    const rect = svg.getBoundingClientRect();
+    const mx = (ev.clientX - rect.left) / rect.width * PW;
+    if (mx < ML || mx > PW - MR) { tip.style.visibility = "hidden"; ch.style.visibility = "hidden"; dots.forEach(d => d.style.visibility = "hidden"); return; }
+    const logB = log10(XMIN) + (mx - ML) / (PW - ML - MR) * (log10(XMAX) - log10(XMIN));
+    const b = Math.pow(10, logB);
+    ch.setAttribute("x1", mx); ch.setAttribute("x2", mx); ch.style.visibility = "visible";
+    tip.replaceChildren();
+    const title = document.createElement("div");
+    title.className = "tt-title";
+    title.textContent = "b = " + fmt(b);
+    tip.appendChild(title);
+    SERIES.forEach((s, k) => {
+      const pts = D.curves[scene][s.slug].filter(p => p[0] > 0);
+      let best = pts[0], bd = Infinity;
+      for (const p of pts) { const dd = Math.abs(log10(p[0]) - logB); if (dd < bd) { bd = dd; best = p; } }
+      dots[k].setAttribute("cx", sx(best[0])); dots[k].setAttribute("cy", sy(best[idx], ymin, ymax));
+      dots[k].style.visibility = "visible";
+      const row = document.createElement("div");
+      row.className = "tt-row";
+      const key = document.createElement("span");
+      key.className = "tt-key";
+      key.style.background = s.color;
+      const name = document.createElement("span");
+      name.textContent = s.label;
+      const val = document.createElement("span");
+      val.className = "tt-val";
+      val.textContent = fmt(best[idx]);
+      row.append(key, name, val);
+      tip.appendChild(row);
+    });
+    tip.style.visibility = "visible";
+    const cx = ev.clientX - card.getBoundingClientRect().left;
+    tip.style.left = Math.min(cx + 14, card.clientWidth - 200) + "px";
+    tip.style.top = "30px";
+  });
+  card.addEventListener("pointerleave", () => {
+    tip.style.visibility = "hidden"; ch.style.visibility = "hidden";
+    dots.forEach(d => d.style.visibility = "hidden");
+  });
+}
+
+// legend
+const legend = document.getElementById("legend");
+[...SERIES.map(s => [s.label, s.color, ""]),
+ ["达标线 1/10000", null, "dash"], ["预算线 1/512", null, "dash2"]].forEach(([lab, color, cls]) => {
+  const item = document.createElement("span");
+  item.className = "item";
+  item.innerHTML = `<span class="key ${cls}" ${color ? `style="background:${color}"` : ""}></span>${lab}`;
+  legend.appendChild(item);
+});
+
+D.scenes.forEach(sc => buildPanel(document.getElementById("ratioRow"), sc, "ratio"));
+D.scenes.forEach(sc => buildPanel(document.getElementById("liftRow"), sc, "lift"));
+
+// table
+const tbody = document.querySelector("#statTable tbody");
+D.stats.forEach(r => {
+  const tr = document.createElement("tr");
+  const pass = r.pass === 1;
+  tr.innerHTML =
+    `<td>${SCENE_CN[r.scene]}</td><td>${STAGE_CN[r.stage]}</td>` +
+    `<td>${r.neg.toLocaleString("en-US")}</td><td>${r.ratio.toExponential(2)}</td>` +
+    `<td>${r.min.toFixed(4)}</td><td>${r.bstar.toFixed(4)}</td>` +
+    `<td>${r.lift.toFixed(4)}</td>` +
+    `<td class="${pass ? "pass-yes" : "pass-no"}">${pass ? "是" : "否"}</td>` +
+    `<td>${r.b_budget.toFixed(4)}</td><td>${r.neg_at_budget.toLocaleString("en-US")}</td>`;
+  tbody.appendChild(tr);
+});
+
+// theme toggle
+const root = document.documentElement;
+const btn = document.getElementById("themeBtn");
+if (new URLSearchParams(location.search).get("theme") === "dark") {
+  root.setAttribute("data-theme", "dark");
+  btn.textContent = "切换浅色";
+}
+btn.addEventListener("click", () => {
+  const dark = root.getAttribute("data-theme") !== "dark";
+  root.setAttribute("data-theme", dark ? "dark" : "light");
+  btn.textContent = dark ? "切换浅色" : "切换深色";
+});
+</script>
+</body>
+</html>
