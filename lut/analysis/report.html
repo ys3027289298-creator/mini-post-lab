@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LUT 格点分布取舍报告</title>
+<style>
+:root {
+  color-scheme: light;
+  --surface: #fcfcfb; --page: #f9f9f7;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,.10);
+  --blue: #2a78d6; --orange: #eb6834;
+  --green: #1baf7a; --red: #e34948;
+  --violet: #6250d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --surface: #1a1a19; --page: #0d0d0d;
+    --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10);
+    --blue: #3987e5; --orange: #d95926; --green: #199e70;
+    --red: #e66767; --violet: #9085e9;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #1a1a19; --page: #0d0d0d;
+  --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10);
+  --blue: #3987e5; --orange: #d95926; --green: #199e70;
+  --red: #e66767; --violet: #9085e9;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --surface: #fcfcfb; --page: #f9f9f7;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,.10);
+  --blue: #2a78d6; --orange: #eb6834;
+  --green: #1baf7a; --red: #e34948;
+  --violet: #6250d6;
+}
+body { margin:0; background:var(--page); color:var(--ink);
+  font:14px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:980px; margin:0 auto; padding:32px 24px 64px; }
+h1 { font-size:22px; margin:0 0 4px; }
+h2 { font-size:17px; margin:36px 0 10px; }
+p, li { color:var(--ink-2); }
+.card { background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:18px 18px 8px; margin-top:16px; }
+.card h3 { margin:0 0 2px; font-size:15px; }
+.card .sub { color:var(--muted); font-size:12.5px; margin:0 0 10px; }
+.kpis { display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; }
+.kpi { flex:1 1 180px; background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:12px 14px; }
+.kpi .v { font-size:22px; font-weight:650; }
+.kpi .l { color:var(--muted); font-size:12px; }
+.bad { color:var(--red); } .good { color:var(--green); }
+table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums;
+  font-size:12.5px; margin-top:8px; }
+th, td { text-align:right; padding:5px 8px; border-bottom:1px solid var(--grid); }
+th:first-child, td:first-child { text-align:left; }
+th { color:var(--muted); font-weight:600; }
+button { font:inherit; border:1px solid var(--axis); background:var(--surface);
+  color:var(--ink); border-radius:8px; padding:4px 12px; cursor:pointer; }
+svg { width:100%; height:auto; display:block; }
+.grid { stroke:var(--grid); stroke-width:1; }
+.axis { stroke:var(--axis); stroke-width:1; }
+.tick { fill:var(--muted); font-size:11px; }
+.llabel { font-size:12px; font-weight:600; }
+.line { fill:none; stroke-width:2; }
+.hit { fill:none; stroke:transparent; stroke-width:14px; pointer-events:stroke; }
+#tip { position:fixed; pointer-events:none; display:none; font-size:12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:7px 10px; box-shadow:0 4px 14px rgba(0,0,0,.18); z-index:5;
+  font-variant-numeric:tabular-nums; }
+#tip b { display:block; margin-bottom:2px; }
+</style>
+</head>
+<body>
+<main>
+<h1>3D LUT 三线性插值：格点分布的感知误差 / 查表开销取舍</h1>
+<p>N=17 格点/轴，曲线 f(x)=x(1+k)/(x+k)，k=0.18；感知度量 CIELAB L*（D65），JND ΔE=2.3。
+<button id="theme" type="button">切换主题</button></p>
+
+<div class="kpis">
+  <div class="kpi"><div class="v bad">3.00</div>
+    <div class="l">均匀 LUT 暗部 ΔL*（阈值 2.3，物理峰差 0.0226）</div></div>
+  <div class="kpi"><div class="v good">0.74</div>
+    <div class="l">非均匀 p=1.3 暗部 ΔL*（三档全过）</div></div>
+  <div class="kpi"><div class="v">108×</div>
+    <div class="l">暗/亮感知误差实测倍数（解析式 120×）</div></div>
+  <div class="kpi"><div class="v">1.8×</div>
+    <div class="l">非均匀查表相对 FMA 快路径的固定开销</div></div>
+</div>
+
+<h2>1. 取舍曲线（C 实测扫参，hover 看数值）</h2>
+<div class="card"><h3>① 感知误差 vs 格点律 p</h3><p class="sub">p=1 即均匀格点：暗部 3.00 超 JND；p≈1.1 起暗部达标，之后边际收益迅速递减。</p><svg class="chart" viewBox="0 0 900 300" data-meta="{&quot;p&quot;: [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0], &quot;series&quot;: [[[3.001, 1.6749, 0.7715, 0.7407, 0.6885, 0.6019, 0.4367, 0.4197, 0.3958, 0.3634, 0.3275, 0.3158, 0.3009, 0.2896, 0.284, 0.2758, 0.276, 0.2744, 0.2708, 0.2653, 0.2774, 0.2775, 0.2761, 0.2731, 0.2689, 0.2934, 0.2946, 0.2944, 0.2931, 0.2906, 0.2872], &quot;--blue&quot;, &quot;\u6697\u90e8&quot;, 3], [[0.308, 0.2036, 0.2352, 0.1718, 0.1949, 0.1703, 0.1722, 0.1903, 0.1578, 0.1735, 0.1889, 0.1724, 0.1758, 0.1897, 0.2033, 0.1835, 0.1916, 0.2047, 0.2175, 0.2299, 0.2065, 0.2186, 0.2314, 0.244, 0.2565, 0.2687, 0.264, 0.2364, 0.2688, 0.2821, 0.295], &quot;--orange&quot;, &quot;\u4e2d\u90e8&quot;, 3], [[0.0279, 0.0302, 0.0314, 0.0335, 0.0396, 0.0328, 0.0414, 0.0475, 0.0492, 0.0435, 0.0537, 0.06, 0.0666, 0.0682, 0.0538, 0.0611, 0.0754, 0.083, 0.0901, 0.0975, 0.1048, 0.1054, 0.097, 0.0793, 0.0709, 0.0933, 0.1123, 0.1277, 0.1394, 0.1482, 0.1569], &quot;--green&quot;, &quot;\u4eae\u90e8&quot;, 3]]}"><line class="axis" x1="64" y1="266" x2="884" y2="266"/><line class="axis" x1="64" y1="18" x2="64" y2="266"/><line class="grid" x1="64" y1="266.0" x2="884" y2="266.0"/><text class="tick" x="57" y="269.5" text-anchor="end">-0.209948</text><line class="grid" x1="64" y1="204.0" x2="884" y2="204.0"/><text class="tick" x="57" y="207.5" text-anchor="end">0.652251</text><line class="grid" x1="64" y1="142.0" x2="884" y2="142.0"/><text class="tick" x="57" y="145.5" text-anchor="end">1.51445</text><line class="grid" x1="64" y1="80.0" x2="884" y2="80.0"/><text class="tick" x="57" y="83.5" text-anchor="end">2.37665</text><line class="grid" x1="64" y1="18.0" x2="884" y2="18.0"/><text class="tick" x="57" y="21.5" text-anchor="end">3.23885</text><text class="tick" x="64.0" y="282" text-anchor="middle">1</text><text class="tick" x="200.7" y="282" text-anchor="middle">1.5</text><text class="tick" x="337.3" y="282" text-anchor="middle">2</text><text class="tick" x="474.0" y="282" text-anchor="middle">2.5</text><text class="tick" x="610.7" y="282" text-anchor="middle">3</text><text class="tick" x="747.3" y="282" text-anchor="middle">3.5</text><text class="tick" x="884.0" y="282" text-anchor="middle">4</text><text class="tick" x="474.0" y="296" text-anchor="middle">格点律指数 p  (xᵢ=(i/16)ᵖ)</text><text class="tick" x="16" y="142.0" text-anchor="middle" transform="rotate(-90 16 142.0)">ΔL* 感知误差</text><line x1="64" y1="85.5" x2="884" y2="85.5" stroke="var(--red)" stroke-width="2" stroke-dasharray="6 5"/><text class="llabel" x="72" y="78.5" fill="var(--red)">JND = 2.3</text><polyline class="line" stroke="var(--blue)" points="64.0,35.1 91.3,130.5 118.7,195.4 146.0,197.6 173.3,201.4 200.7,207.6 228.0,219.5 255.3,220.7 282.7,222.4 310.0,224.8 337.3,227.4 364.7,228.2 392.0,229.3 419.3,230.1 446.7,230.5 474.0,231.1 501.3,231.1 528.7,231.2 556.0,231.4 583.3,231.8 610.7,231.0 638.0,230.9 665.3,231.0 692.7,231.3 720.0,231.6 747.3,229.8 774.7,229.7 802.0,229.7 829.3,229.8 856.7,230.0 884.0,230.3"/><polyline class="line" stroke="var(--orange)" points="64.0,228.8 91.3,236.3 118.7,234.0 146.0,238.5 173.3,236.9 200.7,238.7 228.0,238.5 255.3,237.2 282.7,239.6 310.0,238.4 337.3,237.3 364.7,238.5 392.0,238.3 419.3,237.3 446.7,236.3 474.0,237.7 501.3,237.1 528.7,236.2 556.0,235.3 583.3,234.4 610.7,236.1 638.0,235.2 665.3,234.3 692.7,233.4 720.0,232.5 747.3,231.6 774.7,231.9 802.0,233.9 829.3,231.6 856.7,230.6 884.0,229.7"/><polyline class="line" stroke="var(--green)" points="64.0,248.9 91.3,248.7 118.7,248.6 146.0,248.5 173.3,248.1 200.7,248.5 228.0,247.9 255.3,247.5 282.7,247.4 310.0,247.8 337.3,247.0 364.7,246.6 392.0,246.1 419.3,246.0 446.7,247.0 474.0,246.5 501.3,245.5 528.7,244.9 556.0,244.4 583.3,243.9 610.7,243.4 638.0,243.3 665.3,243.9 692.7,245.2 720.0,245.8 747.3,244.2 774.7,242.8 802.0,241.7 829.3,240.9 856.7,240.2 884.0,239.6"/><text class="llabel" x="878.0" y="221.3" text-anchor="end" fill="var(--blue)">暗部 L=0.05 0.287</text><text class="llabel" x="392.0" y="228.3" text-anchor="middle" fill="var(--orange)">中部 L=0.18</text><text class="llabel" x="878.0" y="253.6" text-anchor="end" fill="var(--green)">亮部 L=0.50 0.157</text><polyline class="hit" points="64.0,35.1 91.3,130.5 118.7,195.4 146.0,197.6 173.3,201.4 200.7,207.6 228.0,219.5 255.3,220.7 282.7,222.4 310.0,224.8 337.3,227.4 364.7,228.2 392.0,229.3 419.3,230.1 446.7,230.5 474.0,231.1 501.3,231.1 528.7,231.2 556.0,231.4 583.3,231.8 610.7,231.0 638.0,230.9 665.3,231.0 692.7,231.3 720.0,231.6 747.3,229.8 774.7,229.7 802.0,229.7 829.3,229.8 856.7,230.0 884.0,230.3"/></svg></div>
+<div class="card"><h3>② 格间距与首尾比 vs p（对数轴）</h3><p class="sub">p 越大暗端越密、亮端越疏；首尾比（紫，见数据表与 hover）随 p 单调恶化，这是 p 不能无限加大的真实代价。</p><svg class="chart" viewBox="0 0 900 300" data-meta="{&quot;p&quot;: [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0], &quot;series&quot;: [[[0.0625, 0.04736614, 0.03589682, 0.02720471, 0.02061731, 0.015625, 0.01184153, 0.0089742, 0.00680118, 0.00515433, 0.00390625, 0.00296038, 0.00224355, 0.00170029, 0.00128858, 0.00097656, 0.0007401, 0.00056089, 0.00042507, 0.00032215, 0.00024414, 0.00018502, 0.00014022, 0.00010627, 8.054e-05, 6.104e-05, 4.626e-05, 3.506e-05, 2.657e-05, 2.013e-05, 1.526e-05], &quot;--blue&quot;, &quot;h \u6697\u7aef&quot;, 5], [[0.0625, 0.06853098, 0.07452321, 0.08047688, 0.08639222, 0.09226954, 0.09810901, 0.10391098, 0.10967553, 0.11540306, 0.12109375, 0.12674779, 0.13236552, 0.13794708, 0.1434927, 0.14900267, 0.15447718, 0.15991652, 0.16532081, 0.17069042, 0.17602539, 0.18132609, 0.18659264, 0.19182539, 0.19702441, 0.20219004, 0.20732242, 0.21242172, 0.21748829, 0.22252226, 0.2275238], &quot;--orange&quot;, &quot;h \u4eae\u7aef&quot;, 5], [[1.0, 0.691164, 0.481686, 0.338044, 0.238648, 0.169341, 0.120698, 0.086364, 0.062012, 0.044664, 0.032258, 0.023356, 0.01695, 0.012326, 0.00898, 0.006554, 0.004791, 0.003507, 0.002571, 0.001887, 0.001387, 0.00102, 0.000751, 0.000554, 0.000409, 0.000302, 0.000223, 0.000165, 0.000122, 9e-05, 6.7e-05], &quot;--violet&quot;, &quot;\u9996\u5c3e\u6bd4&quot;, 4]]}"><line class="axis" x1="64" y1="266" x2="884" y2="266"/><line class="axis" x1="64" y1="18" x2="64" y2="266"/><line class="grid" x1="64" y1="276.9" x2="884" y2="276.9"/><text class="tick" x="57" y="280.4" text-anchor="end">0</text><line class="grid" x1="64" y1="217.5" x2="884" y2="217.5"/><text class="tick" x="57" y="221.0" text-anchor="end">0</text><line class="grid" x1="64" y1="158.1" x2="884" y2="158.1"/><text class="tick" x="57" y="161.6" text-anchor="end">0.001</text><line class="grid" x1="64" y1="98.6" x2="884" y2="98.6"/><text class="tick" x="57" y="102.1" text-anchor="end">0.01</text><line class="grid" x1="64" y1="39.2" x2="884" y2="39.2"/><text class="tick" x="57" y="42.7" text-anchor="end">0.1</text><line class="grid" x1="64" y1="-20.2" x2="884" y2="-20.2"/><text class="tick" x="57" y="-16.7" text-anchor="end">1</text><text class="tick" x="64.0" y="282" text-anchor="middle">1</text><text class="tick" x="200.7" y="282" text-anchor="middle">1.5</text><text class="tick" x="337.3" y="282" text-anchor="middle">2</text><text class="tick" x="474.0" y="282" text-anchor="middle">2.5</text><text class="tick" x="610.7" y="282" text-anchor="middle">3</text><text class="tick" x="747.3" y="282" text-anchor="middle">3.5</text><text class="tick" x="884.0" y="282" text-anchor="middle">4</text><text class="tick" x="474.0" y="296" text-anchor="middle">格点律指数 p</text><text class="tick" x="16" y="142.0" text-anchor="middle" transform="rotate(-90 16 142.0)">格间距 h（对数轴）</text><polyline class="line" stroke="var(--blue)" points="64.0,51.3 91.3,58.5 118.7,65.7 146.0,72.8 173.3,80.0 200.7,87.1 228.0,94.3 255.3,101.4 282.7,108.6 310.0,115.7 337.3,122.9 364.7,130.1 392.0,137.2 419.3,144.4 446.7,151.5 474.0,158.7 501.3,165.8 528.7,173.0 556.0,180.1 583.3,187.3 610.7,194.4 638.0,201.6 665.3,208.8 692.7,215.9 720.0,223.1 747.3,230.2 774.7,237.4 802.0,244.5 829.3,251.7 856.7,258.9 884.0,266.0"/><polyline class="line" stroke="var(--orange)" points="64.0,51.3 91.3,49.0 118.7,46.8 146.0,44.8 173.3,43.0 200.7,41.3 228.0,39.7 255.3,38.2 282.7,36.8 310.0,35.5 337.3,34.3 364.7,33.1 392.0,32.0 419.3,30.9 446.7,29.9 474.0,28.9 501.3,28.0 528.7,27.1 556.0,26.2 583.3,25.4 610.7,24.6 638.0,23.9 665.3,23.1 692.7,22.4 720.0,21.7 747.3,21.0 774.7,20.4 802.0,19.8 829.3,19.2 856.7,18.6 884.0,18.0"/><text class="llabel" x="878.0" y="258.0" text-anchor="end" fill="var(--blue)">暗端 h₀ 0.00002</text><text class="llabel" x="878.0" y="32.0" text-anchor="end" fill="var(--orange)">亮端 hₗ 0.2275</text><polyline class="hit" points="64.0,51.3 91.3,58.5 118.7,65.7 146.0,72.8 173.3,80.0 200.7,87.1 228.0,94.3 255.3,101.4 282.7,108.6 310.0,115.7 337.3,122.9 364.7,130.1 392.0,137.2 419.3,144.4 446.7,151.5 474.0,158.7 501.3,165.8 528.7,173.0 556.0,180.1 583.3,187.3 610.7,194.4 638.0,201.6 665.3,208.8 692.7,215.9 720.0,223.1 747.3,230.2 774.7,237.4 802.0,244.5 829.3,251.7 856.7,258.9 884.0,266.0"/></svg></div>
+<div class="card"><h3>③ 查表开销 vs p</h3><p class="sub">通用路径（二分定位 + 8 角点混合）约 30–35 ns，与 p 无关；均匀 FMA 快路径 17.2 ns 仅在 p=1 可用——非均匀是约 1.8× 的固定进门费。</p><svg class="chart" viewBox="0 0 900 300" data-meta="{&quot;p&quot;: [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0], &quot;series&quot;: [[[28.12, 28.18, 29.02, 28.33, 27.98, 27.98, 27.84, 27.87, 31.35, 31.03, 29.58, 28.31, 28.54, 30.44, 28.85, 28.09, 28.52, 28.59, 29.62, 29.98, 28.09, 29.58, 30.45, 31.86, 28.74, 28.57, 28.64, 28.4, 28.47, 29.73, 29.37], &quot;--violet&quot;, &quot;\u901a\u7528\u4e8c\u5206\u8def\u5f84&quot;, 1]]}"><line class="axis" x1="64" y1="266" x2="884" y2="266"/><line class="axis" x1="64" y1="18" x2="64" y2="266"/><line class="grid" x1="64" y1="266.0" x2="884" y2="266.0"/><text class="tick" x="57" y="269.5" text-anchor="end">27.5184</text><line class="grid" x1="64" y1="204.0" x2="884" y2="204.0"/><text class="tick" x="57" y="207.5" text-anchor="end">28.6842</text><line class="grid" x1="64" y1="142.0" x2="884" y2="142.0"/><text class="tick" x="57" y="145.5" text-anchor="end">29.85</text><line class="grid" x1="64" y1="80.0" x2="884" y2="80.0"/><text class="tick" x="57" y="83.5" text-anchor="end">31.0158</text><line class="grid" x1="64" y1="18.0" x2="884" y2="18.0"/><text class="tick" x="57" y="21.5" text-anchor="end">32.1816</text><text class="tick" x="64.0" y="282" text-anchor="middle">1</text><text class="tick" x="200.7" y="282" text-anchor="middle">1.5</text><text class="tick" x="337.3" y="282" text-anchor="middle">2</text><text class="tick" x="474.0" y="282" text-anchor="middle">2.5</text><text class="tick" x="610.7" y="282" text-anchor="middle">3</text><text class="tick" x="747.3" y="282" text-anchor="middle">3.5</text><text class="tick" x="884.0" y="282" text-anchor="middle">4</text><text class="tick" x="474.0" y="296" text-anchor="middle">格点律指数 p</text><text class="tick" x="16" y="142.0" text-anchor="middle" transform="rotate(-90 16 142.0)">单次查表 ns（3 次取最小值）</text><polyline class="line" stroke="var(--violet)" points="64.0,234.0 91.3,230.8 118.7,186.1 146.0,222.8 173.3,241.5 200.7,241.5 228.0,248.9 255.3,247.3 282.7,62.2 310.0,79.2 337.3,156.4 364.7,223.9 392.0,211.7 419.3,110.6 446.7,195.2 474.0,235.6 501.3,212.7 528.7,209.0 556.0,154.2 583.3,135.1 610.7,235.6 638.0,156.4 665.3,110.1 692.7,35.1 720.0,201.0 747.3,210.1 774.7,206.4 802.0,219.1 829.3,215.4 856.7,148.4 884.0,167.5"/><circle cx="64.0" cy="234.0" r="3" fill="var(--violet)"/><circle cx="91.3" cy="230.8" r="3" fill="var(--violet)"/><circle cx="118.7" cy="186.1" r="3" fill="var(--violet)"/><circle cx="146.0" cy="222.8" r="3" fill="var(--violet)"/><circle cx="173.3" cy="241.5" r="3" fill="var(--violet)"/><circle cx="200.7" cy="241.5" r="3" fill="var(--violet)"/><circle cx="228.0" cy="248.9" r="3" fill="var(--violet)"/><circle cx="255.3" cy="247.3" r="3" fill="var(--violet)"/><circle cx="282.7" cy="62.2" r="3" fill="var(--violet)"/><circle cx="310.0" cy="79.2" r="3" fill="var(--violet)"/><circle cx="337.3" cy="156.4" r="3" fill="var(--violet)"/><circle cx="364.7" cy="223.9" r="3" fill="var(--violet)"/><circle cx="392.0" cy="211.7" r="3" fill="var(--violet)"/><circle cx="419.3" cy="110.6" r="3" fill="var(--violet)"/><circle cx="446.7" cy="195.2" r="3" fill="var(--violet)"/><circle cx="474.0" cy="235.6" r="3" fill="var(--violet)"/><circle cx="501.3" cy="212.7" r="3" fill="var(--violet)"/><circle cx="528.7" cy="209.0" r="3" fill="var(--violet)"/><circle cx="556.0" cy="154.2" r="3" fill="var(--violet)"/><circle cx="583.3" cy="135.1" r="3" fill="var(--violet)"/><circle cx="610.7" cy="235.6" r="3" fill="var(--violet)"/><circle cx="638.0" cy="156.4" r="3" fill="var(--violet)"/><circle cx="665.3" cy="110.1" r="3" fill="var(--violet)"/><circle cx="692.7" cy="35.1" r="3" fill="var(--violet)"/><circle cx="720.0" cy="201.0" r="3" fill="var(--violet)"/><circle cx="747.3" cy="210.1" r="3" fill="var(--violet)"/><circle cx="774.7" cy="206.4" r="3" fill="var(--violet)"/><circle cx="802.0" cy="219.1" r="3" fill="var(--violet)"/><circle cx="829.3" cy="215.4" r="3" fill="var(--violet)"/><circle cx="856.7" cy="148.4" r="3" fill="var(--violet)"/><circle cx="884.0" cy="167.5" r="3" fill="var(--violet)"/><polyline class="hit" points="64.0,234.0 91.3,230.8 118.7,186.1 146.0,222.8 173.3,241.5 200.7,241.5 228.0,248.9 255.3,247.3 282.7,62.2 310.0,79.2 337.3,156.4 364.7,223.9 392.0,211.7 419.3,110.6 446.7,195.2 474.0,235.6 501.3,212.7 528.7,209.0 556.0,154.2 583.3,135.1 610.7,235.6 638.0,156.4 665.3,110.1 692.7,35.1 720.0,201.0 747.3,210.1 774.7,206.4 802.0,219.1 829.3,215.4 856.7,148.4 884.0,167.5"/></svg></div>
+
+<h2>2. 关键结论</h2>
+<ul>
+<li>均匀格点（p=1）暗部档 ΔL*=3.001 &gt; 2.3，<b class="bad">不达标</b>；
+物理峰值误差 0.0226，两端间距均为 h=0.0625。</li>
+<li>解析反解 p*≈1.25（小 x 极限 3/2），实测 crossing p≈1.06；
+取设计点 <b>p=1.3</b> 留安全边际。</li>
+<li>p=1.3 时首尾格间距 0.02720 / 0.08048，
+首尾比 0.338；两档中心局部间距比 0.588，
+暗/亮/中 ΔL* = 0.741 / 0.172 / 0.033。</li>
+<li>查表开销是<b>进门费</b>：p&gt;1 后二分深度只由 N 决定，耗时不随 p 增长；
+随 p 增长的是亮部间距（亮部被掏空），所以 p 取满足暗部达标的最小值。</li>
+</ul>
+
+<h2>3. 扫参数据表（表格视图）</h2>
+<div class="card"><table>
+<tr><th>p</th><th>h 暗端</th><th>h 亮端</th><th>首尾比</th>
+<th>ΔL* 暗</th><th>ΔL* 中</th><th>ΔL* 亮</th><th>ns/次</th></tr>
+<tr><td>1.00</td><td>0.06250</td><td>0.06250</td><td>1.0000</td><td>3.001</td><td>0.308</td><td>0.028</td><td>28.1</td></tr>
+<tr><td>1.10</td><td>0.04737</td><td>0.06853</td><td>0.6912</td><td>1.675</td><td>0.204</td><td>0.030</td><td>28.2</td></tr>
+<tr><td>1.20</td><td>0.03590</td><td>0.07452</td><td>0.4817</td><td>0.771</td><td>0.235</td><td>0.031</td><td>29.0</td></tr>
+<tr><td>1.30</td><td>0.02720</td><td>0.08048</td><td>0.3380</td><td>0.741</td><td>0.172</td><td>0.034</td><td>28.3</td></tr>
+<tr><td>1.40</td><td>0.02062</td><td>0.08639</td><td>0.2386</td><td>0.689</td><td>0.195</td><td>0.040</td><td>28.0</td></tr>
+<tr><td>1.50</td><td>0.01562</td><td>0.09227</td><td>0.1693</td><td>0.602</td><td>0.170</td><td>0.033</td><td>28.0</td></tr>
+<tr><td>1.60</td><td>0.01184</td><td>0.09811</td><td>0.1207</td><td>0.437</td><td>0.172</td><td>0.041</td><td>27.8</td></tr>
+<tr><td>1.70</td><td>0.00897</td><td>0.10391</td><td>0.0864</td><td>0.420</td><td>0.190</td><td>0.048</td><td>27.9</td></tr>
+<tr><td>1.80</td><td>0.00680</td><td>0.10968</td><td>0.0620</td><td>0.396</td><td>0.158</td><td>0.049</td><td>31.4</td></tr>
+<tr><td>1.90</td><td>0.00515</td><td>0.11540</td><td>0.0447</td><td>0.363</td><td>0.173</td><td>0.043</td><td>31.0</td></tr>
+<tr><td>2.00</td><td>0.00391</td><td>0.12109</td><td>0.0323</td><td>0.328</td><td>0.189</td><td>0.054</td><td>29.6</td></tr>
+<tr><td>2.10</td><td>0.00296</td><td>0.12675</td><td>0.0234</td><td>0.316</td><td>0.172</td><td>0.060</td><td>28.3</td></tr>
+<tr><td>2.20</td><td>0.00224</td><td>0.13237</td><td>0.0169</td><td>0.301</td><td>0.176</td><td>0.067</td><td>28.5</td></tr>
+<tr><td>2.30</td><td>0.00170</td><td>0.13795</td><td>0.0123</td><td>0.290</td><td>0.190</td><td>0.068</td><td>30.4</td></tr>
+<tr><td>2.40</td><td>0.00129</td><td>0.14349</td><td>0.0090</td><td>0.284</td><td>0.203</td><td>0.054</td><td>28.9</td></tr>
+<tr><td>2.50</td><td>0.00098</td><td>0.14900</td><td>0.0066</td><td>0.276</td><td>0.183</td><td>0.061</td><td>28.1</td></tr>
+<tr><td>2.60</td><td>0.00074</td><td>0.15448</td><td>0.0048</td><td>0.276</td><td>0.192</td><td>0.075</td><td>28.5</td></tr>
+<tr><td>2.70</td><td>0.00056</td><td>0.15992</td><td>0.0035</td><td>0.274</td><td>0.205</td><td>0.083</td><td>28.6</td></tr>
+<tr><td>2.80</td><td>0.00043</td><td>0.16532</td><td>0.0026</td><td>0.271</td><td>0.217</td><td>0.090</td><td>29.6</td></tr>
+<tr><td>2.90</td><td>0.00032</td><td>0.17069</td><td>0.0019</td><td>0.265</td><td>0.230</td><td>0.098</td><td>30.0</td></tr>
+<tr><td>3.00</td><td>0.00024</td><td>0.17603</td><td>0.0014</td><td>0.277</td><td>0.206</td><td>0.105</td><td>28.1</td></tr>
+<tr><td>3.10</td><td>0.00019</td><td>0.18133</td><td>0.0010</td><td>0.278</td><td>0.219</td><td>0.105</td><td>29.6</td></tr>
+<tr><td>3.20</td><td>0.00014</td><td>0.18659</td><td>0.0008</td><td>0.276</td><td>0.231</td><td>0.097</td><td>30.4</td></tr>
+<tr><td>3.30</td><td>0.00011</td><td>0.19183</td><td>0.0006</td><td>0.273</td><td>0.244</td><td>0.079</td><td>31.9</td></tr>
+<tr><td>3.40</td><td>0.00008</td><td>0.19702</td><td>0.0004</td><td>0.269</td><td>0.257</td><td>0.071</td><td>28.7</td></tr>
+<tr><td>3.50</td><td>0.00006</td><td>0.20219</td><td>0.0003</td><td>0.293</td><td>0.269</td><td>0.093</td><td>28.6</td></tr>
+<tr><td>3.60</td><td>0.00005</td><td>0.20732</td><td>0.0002</td><td>0.295</td><td>0.264</td><td>0.112</td><td>28.6</td></tr>
+<tr><td>3.70</td><td>0.00004</td><td>0.21242</td><td>0.0002</td><td>0.294</td><td>0.236</td><td>0.128</td><td>28.4</td></tr>
+<tr><td>3.80</td><td>0.00003</td><td>0.21749</td><td>0.0001</td><td>0.293</td><td>0.269</td><td>0.139</td><td>28.5</td></tr>
+<tr><td>3.90</td><td>0.00002</td><td>0.22252</td><td>0.0001</td><td>0.291</td><td>0.282</td><td>0.148</td><td>29.7</td></tr>
+<tr><td>4.00</td><td>0.00002</td><td>0.22752</td><td>0.0001</td><td>0.287</td><td>0.295</td><td>0.157</td><td>29.4</td></tr>
+</table></div>
+</main>
+<div id="tip"></div>
+<script>
+document.getElementById('theme').onclick = () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+};
+const tip = document.getElementById('tip');
+document.querySelectorAll('svg.chart').forEach(svg => {
+  const meta = JSON.parse(svg.dataset.meta);
+  const n = meta.p.length;
+  svg.querySelectorAll('.hit').forEach(el => el.addEventListener('mousemove', e => {
+    const r = svg.getBoundingClientRect();
+    const fx = (e.clientX - r.left) / r.width * 900;
+    const frac = Math.min(1, Math.max(0, (fx - 64) / (900 - 64 - 16)));
+    const i = Math.round(frac * (n - 1));
+    tip.style.display = 'block';
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top = (e.clientY + 14) + 'px';
+    tip.innerHTML = '<b>p=' + meta.p[i].toFixed(2) + '</b>' +
+      meta.series.map(s => s[2] + ': ' + s[0][i].toFixed(s[3])).join('<br>');
+  }));
+  svg.addEventListener('mouseleave', () => tip.style.display = 'none');
+});
+</script>
+</body></html>
