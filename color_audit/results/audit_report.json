@@ -1,0 +1,105 @@
+{
+  "criterion": "per-channel code-value diff > 1 (reference gamma 2.20)",
+  "frame": [
+    32,
+    32
+  ],
+  "blur_radius": 2,
+  "pairs": [
+    {
+      "pair": [
+        1.8,
+        2.2
+      ],
+      "mode": "linear (correct)",
+      "max_code_diff": 0.0,
+      "violations": 0,
+      "pass": 1
+    },
+    {
+      "pair": [
+        2.2,
+        2.4
+      ],
+      "mode": "linear (correct)",
+      "max_code_diff": 0.0,
+      "violations": 0,
+      "pass": 1
+    },
+    {
+      "pair": [
+        1.8,
+        2.4
+      ],
+      "mode": "linear (correct)",
+      "max_code_diff": 0.0,
+      "violations": 0,
+      "pass": 1
+    },
+    {
+      "pair": [
+        1.8,
+        2.2
+      ],
+      "mode": "gamma-space (buggy)",
+      "max_code_diff": 18.33,
+      "violations": 1757,
+      "pass": 0
+    },
+    {
+      "pair": [
+        2.2,
+        2.4
+      ],
+      "mode": "gamma-space (buggy)",
+      "max_code_diff": 8.08,
+      "violations": 1717,
+      "pass": 0
+    },
+    {
+      "pair": [
+        1.8,
+        2.4
+      ],
+      "mode": "gamma-space (buggy)",
+      "max_code_diff": 26.41,
+      "violations": 1780,
+      "pass": 0
+    }
+  ],
+  "tolerance": [
+    {
+      "gamma": 1.8,
+      "rel_tol_capture": 0.01072,
+      "rel_tol_display": 0.01072,
+      "abs_band_capture": [
+        1.7807,
+        1.8193
+      ]
+    },
+    {
+      "gamma": 2.2,
+      "rel_tol_capture": 0.01072,
+      "rel_tol_display": 0.01072,
+      "abs_band_capture": [
+        2.1764,
+        2.2236
+      ]
+    },
+    {
+      "gamma": 2.4,
+      "rel_tol_capture": 0.01072,
+      "rel_tol_display": 0.01072,
+      "abs_band_capture": [
+        2.3743,
+        2.4257
+      ]
+    }
+  ],
+  "blend_law": {
+    "case": "50/50 blend of black and white, gamma 2.2",
+    "linear_result": 0.5,
+    "gamma_result": 0.2176,
+    "code_gap": 58.6
+  }
+}
