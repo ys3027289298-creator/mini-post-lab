@@ -1,0 +1,7 @@
+tier,curve,xmax,M_slope,b_predicted_envelope,b_measured_min
+dark,reinhard,0.997459,0.963041,8,8
+dark,aces,0.997459,1.801106,9,8
+mid,reinhard,8.571912,0.652891,11,10
+mid,aces,8.571912,1.439041,12,11
+bright,reinhard,28.676939,0.218264,11,10
+bright,aces,28.676939,0.167022,11,10

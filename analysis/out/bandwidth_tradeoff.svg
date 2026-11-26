@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="460" font-family="sans-serif">
+<rect width="760" height="460" fill="white"/>
+<text x="380.0" y="26" text-anchor="middle" font-size="17" font-weight="bold">trade-off: minimum depth for ≤1-level error vs bandwidth cost</text>
+<line x1="78" y1="402.0" x2="590" y2="402.0" stroke="#eee"/>
+<text x="70" y="406.0" text-anchor="end" font-size="11" fill="#555">0.00x</text>
+<line x1="78" y1="331.2" x2="590" y2="331.2" stroke="#eee"/>
+<text x="70" y="335.2" text-anchor="end" font-size="11" fill="#555">0.21x</text>
+<line x1="78" y1="260.4" x2="590" y2="260.4" stroke="#eee"/>
+<text x="70" y="264.4" text-anchor="end" font-size="11" fill="#555">0.42x</text>
+<line x1="78" y1="189.6" x2="590" y2="189.6" stroke="#eee"/>
+<text x="70" y="193.6" text-anchor="end" font-size="11" fill="#555">0.63x</text>
+<line x1="78" y1="118.8" x2="590" y2="118.8" stroke="#eee"/>
+<text x="70" y="122.8" text-anchor="end" font-size="11" fill="#555">0.84x</text>
+<line x1="78" y1="64.9" x2="590" y2="64.9" stroke="#eee"/>
+<text x="70" y="68.9" text-anchor="end" font-size="11" fill="#555">1.05x</text>
+<line x1="78.0" y1="402" x2="78.0" y2="407" stroke="#888"/>
+<text x="78.0" y="422" text-anchor="middle" font-size="11">8</text>
+<line x1="206.0" y1="402" x2="206.0" y2="407" stroke="#888"/>
+<text x="206.0" y="422" text-anchor="middle" font-size="11">9</text>
+<line x1="334.0" y1="402" x2="334.0" y2="407" stroke="#888"/>
+<text x="334.0" y="422" text-anchor="middle" font-size="11">10</text>
+<line x1="462.0" y1="402" x2="462.0" y2="407" stroke="#888"/>
+<text x="462.0" y="422" text-anchor="middle" font-size="11">11</text>
+<line x1="590.0" y1="402" x2="590.0" y2="407" stroke="#888"/>
+<text x="590.0" y="422" text-anchor="middle" font-size="11">12</text>
+<text x="334.0" y="448" text-anchor="middle" font-size="13">minimum required bit depth b</text>
+<text x="20" y="225.0" font-size="13" transform="rotate(-90 20 225.0)" text-anchor="middle">relative bandwidth (b/8)</text>
+<text x="606" y="52" font-size="12" font-weight="bold">scene / curve → min b</text>
+<circle cx="334.0" cy="64.9" r="5" fill="#E45756" fill-opacity="0.5"/>
+<text x="606" y="74" font-size="11.5"><tspan fill="#E45756">●</tspan> bright/aces: 10-bit, 1.25x bandwidth</text>
+<circle cx="334.0" cy="64.9" r="5" fill="#E45756"/>
+<text x="606" y="94" font-size="11.5"><tspan fill="#E45756">●</tspan> bright/reinhard: 10-bit, 1.25x bandwidth</text>
+<circle cx="78.0" cy="64.9" r="5" fill="#4C78A8" fill-opacity="0.5"/>
+<text x="606" y="114" font-size="11.5"><tspan fill="#4C78A8">●</tspan> dark/aces: 8-bit, 1.00x bandwidth</text>
+<circle cx="78.0" cy="64.9" r="5" fill="#4C78A8"/>
+<text x="606" y="134" font-size="11.5"><tspan fill="#4C78A8">●</tspan> dark/reinhard: 8-bit, 1.00x bandwidth</text>
+<circle cx="590.0" cy="64.9" r="5" fill="#F58518" fill-opacity="0.5"/>
+<text x="606" y="154" font-size="11.5"><tspan fill="#F58518">●</tspan> mid/aces: 12-bit, 1.50x bandwidth</text>
+<circle cx="334.0" cy="64.9" r="5" fill="#F58518"/>
+<text x="606" y="174" font-size="11.5"><tspan fill="#F58518">●</tspan> mid/reinhard: 10-bit, 1.25x bandwidth</text>
+<line x1="78.0" y1="48" x2="78.0" y2="402" stroke="#888" stroke-dasharray="4 4"/>
+<text x="83.0" y="62" font-size="11" fill="#555">8-bit (fails mid/bright)</text>
+</svg>

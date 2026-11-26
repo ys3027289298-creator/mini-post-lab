@@ -1,0 +1,5 @@
+tier,curve,worst_x,worst_y,hdr_value,quantized_value,export_L,preview_L,abs_diff,levels_over_tol,clipped
+mid,reinhard,1,52,0.252112,0.235307,0.201349,0.190485,0.010864,2.77,0
+mid,aces,1,52,0.252112,0.235307,0.377032,0.353276,0.023757,6.06,0
+bright,reinhard,0,86,1.180471,1.124586,0.541383,0.529320,0.012063,3.08,0
+bright,aces,0,86,1.180471,1.124586,0.836697,0.827536,0.009161,2.34,0

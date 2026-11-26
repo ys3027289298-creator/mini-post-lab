@@ -1,0 +1,13 @@
+tier,curve,headroom_model,xmax,clip_fraction,mean_signed_delta,brighter_pixels,darker_pixels
+dark,reinhard,frame_max,0.9975,0.000015,-0.00000363,32664,32860
+dark,aces,frame_max,0.9975,0.000015,-0.00000341,32663,32860
+dark,reinhard,fixed,1.0000,0.000000,-0.00000148,32741,32790
+dark,aces,fixed,1.0000,0.000000,0.00000131,32742,32790
+mid,reinhard,frame_max,8.5719,0.000015,-0.00001031,32762,32767
+mid,aces,frame_max,8.5719,0.000015,-0.00002405,32684,32708
+mid,reinhard,fixed,8.0000,0.000549,-0.00000640,32785,32751
+mid,aces,fixed,8.0000,0.000549,-0.00001367,32728,32667
+bright,reinhard,frame_max,28.6769,0.000015,-0.00001431,32743,32789
+bright,aces,frame_max,28.6769,0.000015,-0.00001142,24355,24603
+bright,reinhard,fixed,8.0000,0.160904,-0.00172413,27479,38057
+bright,aces,fixed,8.0000,0.160904,-0.00000189,24393,24458
