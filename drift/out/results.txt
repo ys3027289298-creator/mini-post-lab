@@ -1,0 +1,5 @@
+fps=60 q=1/256 budget=1/512=0.001953125 frames_10min=36000
+linear_delta_per_frame=5.42534722222e-08
+sqrt_sigma_per_frame=1.02938725917e-05
+policy_reset_frames=600 policy_reset_seconds=10.0
+wrote out/runs.csv out/reset_curves.csv out/continuity_check.csv

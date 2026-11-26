@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>后处理累积漂移与清零策略 — mini-post-lab</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --page: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --critical: #d03b3b;
+  --budget: #6250d6;
+  --good: #0ca30c;
+  --border: rgba(11,11,11,0.10);
+  background: var(--page);
+  color: var(--text-primary);
+  font: 14px/1.55 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  margin: 0;
+  padding: 30px 36px 52px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --page: #0d0d0d;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --critical: #e66767;
+    --budget: #9085e9;
+    --good: #0ca30c;
+    --border: rgba(255,255,255,0.10);
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --surface-1: #1a1a19; --page: #0d0d0d;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --critical: #e66767; --budget: #9085e9; --good: #0ca30c;
+  --border: rgba(255,255,255,0.10);
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+h1 { font-size: 23px; margin: 0 44px 6px 0; letter-spacing: -0.01em; }
+h2 { font-size: 17px; margin: 30px 0 10px; }
+h3 { font-size: 14px; margin: 0 0 2px; font-weight: 650; }
+.sub { color: var(--text-secondary); max-width: 980px; margin: 0 0 18px; }
+.theme-btn {
+  float: right; border: 1px solid var(--border); background: var(--surface-1);
+  color: var(--text-secondary); border-radius: 8px; padding: 6px 13px;
+  font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin: 18px 0 8px; }
+.kpi { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; }
+.kpi .label { color: var(--text-secondary); font-size: 12.5px; }
+.kpi .value { font-size: 25px; line-height: 1.18; font-weight: 720; font-variant-numeric: tabular-nums; margin-top: 3px; }
+.kpi .hint { color: var(--muted); font-size: 12px; margin-top: 3px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px 10px; position: relative; min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+.row-label { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 0 2px; color: var(--text-secondary); font-size: 12.5px; }
+.legend .item { display: inline-flex; align-items: center; gap: 7px; }
+.key-line { width: 20px; height: 0; border-top: 2.5px solid; border-radius: 2px; }
+.key-dash { width: 20px; height: 0; border-top: 2px dashed; }
+.key-dot { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--surface-1); box-shadow: 0 0 0 1px var(--axis); }
+svg { width: 100%; height: auto; display: block; }
+.axis { stroke: var(--axis); stroke-width: 1; shape-rendering: crispEdges; }
+.gridline { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
+.tick { fill: var(--muted); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.axis-title { fill: var(--text-secondary); font-size: 11.5px; }
+.series-line { fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.ref { fill: none; stroke-width: 1.6; stroke-dasharray: 6 4; }
+.direct-label { font-size: 11.5px; font-weight: 650; dominant-baseline: middle; }
+.crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; visibility: hidden; pointer-events: none; }
+.hover-dot { r: 4.5; stroke: var(--surface-1); stroke-width: 2; visibility: hidden; pointer-events: none; }
+.overlay { fill: transparent; cursor: crosshair; outline: none; }
+.overlay:focus { stroke: var(--s1); stroke-width: 1.5; }
+.tooltip {
+  position: absolute; z-index: 10; pointer-events: none; visibility: hidden;
+  min-width: 190px; max-width: 260px;
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.16); font-size: 12.5px;
+}
+.tt-title { color: var(--text-secondary); margin-bottom: 5px; font-variant-numeric: tabular-nums; }
+.tt-row { display: flex; align-items: center; gap: 7px; margin: 3px 0; }
+.tt-key { width: 13px; height: 3px; border-radius: 2px; flex: none; }
+.tt-val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+table { border-collapse: collapse; width: 100%; font-size: 12.8px; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+th { color: var(--text-secondary); font-weight: 650; border-bottom: 1px solid var(--axis); }
+tr:last-child td { border-bottom: 0; }
+.pass { color: var(--good); font-weight: 700; }
+.fail { color: var(--critical); font-weight: 700; }
+.note { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+.formula { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 12px 15px; color: var(--text-secondary); margin: 10px 0; }
+.formula code { color: var(--text-primary); font-size: 13px; }
+.table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-1); }
+.badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.badge.lin { background: color-mix(in srgb, var(--s1) 14%, transparent); color: var(--s1); }
+.badge.sqrt { background: color-mix(in srgb, var(--s2) 15%, transparent); color: var(--s2); }
+@media (max-width: 860px) { .kpis, .grid2 { grid-template-columns: 1fr; } .viz-root { padding: 22px 16px 40px; } }
+</style>
+</head>
+<body>
+<div class="viz-root" id="root">
+<div class="wrap">
+  <button class="theme-btn" id="themeBtn" type="button">切换深色</button>
+  <h1>后处理累积漂移：形状反解、量级预算与清零周期</h1>
+  <p class="sub">主口径为 60 fps、8-bit 等距量化 <code>q=1/256</code>，十分钟预算 <code>B=q/2=1/512≈0.001953</code>。
+  三档帧等价压测为 1 / 10 / 60 分钟（3,600 / 36,000 / 216,000 帧）；4096 条确定性 lane 用于测量随机舍入的 RMS，不是重复运行。</p>
+
+  <div class="kpis" id="kpis"></div>
+
+  <h2>1. 漂移形状：log–log 斜率必须分开</h2>
+  <div class="formula">
+    <code>D<sub>lin</sub>(N)=δN=δfT</code>；
+    <code>RMS D<sub>sqrt</sub>(N)=σ√N</code>。
+    单点 <code>D(600s)=q/2</code> 只能标定系数，不能判型；三档斜率
+    <code>α=ΔlnD/ΔlnN</code> 中 α≈1 为线性，α≈0.5 为平方根。
+  </div>
+  <div class="card wide">
+    <h3>三档压测的偏移量与理论形状</h3>
+    <p class="row-label">纵轴为量化级数（对数轴）；红点线是半个量化级预算。实心点来自 C harness 的 out/runs.csv。</p>
+    <div id="runtimeChart"></div>
+    <div class="legend">
+      <span class="item"><i class="key-line" style="border-color:var(--s1)"></i>固定偏差模型 / 实测点</span>
+      <span class="item"><i class="key-line" style="border-color:var(--s2)"></i>独立舍入模型 / 实测点</span>
+      <span class="item"><i class="key-dash" style="border-color:var(--critical)"></i>预算 0.5 q</span>
+    </div>
+  </div>
+
+  <h2>2. 清零周期取舍：漂移上升，时域连续性也上升</h2>
+  <p class="sub" style="margin-bottom:10px">
+  清零间隔 R 越短，漂移包络越小，但时域平均/连续性越差。下图不用双轴，拆成两个共享对数横轴的小图。</p>
+  <div class="grid2">
+    <div class="card">
+      <h3>清零间隔内的最大漂移</h3>
+      <p class="row-label">R 帧后清零；线性为确定包络，平方根为 RMS 包络。</p>
+      <div id="resetDriftChart"></div>
+    </div>
+    <div class="card">
+      <h3>时域连续性分数</h3>
+      <p class="row-label">C(R)=1−1/√R；单位方差 iid 噪声的帧间 RMS 差相对原始序列下降比例。绿点为 C harness 实测。</p>
+      <div id="continuityChart"></div>
+    </div>
+  </div>
+
+  <h2>3. 三档运行结果与超预算档</h2>
+  <div class="table-scroll">
+    <table id="runTable">
+      <thead><tr>
+        <th>累积模型</th><th>档位</th><th>帧数</th><th>裸跑偏移 (q)</th><th>α 判定</th>
+        <th>裸跑 ≤0.5q?</th><th>10s 清零边界 RMS (q)</th><th>清零后全局最大 (q)</th><th>清零达标?</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p class="note">注：平方根模型的有符号跨 lane 均值会因相互抵消而接近 0；应使用 RMS 作为单累积器误差尺度。全局最大列是 4096 lane × 全部时刻的保守尾部观测，不是平均偏移指标。</p>
+
+  <h2>4. 连续性实测点</h2>
+  <div class="table-scroll">
+    <table id="continuityTable">
+      <thead><tr><th>清零间隔</th><th>秒</th><th>实测帧间差 RMS</th><th>理论 √(2/R)</th><th>实测连续性</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p class="note">复现：<code>cd drift &amp;&amp; make data</code>。图表数据由 tools/analyze.py 从 out/*.csv 生成；换成真实压测 CSV 后可直接复用同一判型和作图流程。</p>
+</div>
+</div>
+
+<script src="data.js"></script>
+<script>
+const D = window.DRIFT_DATA;
+const NS = "http://www.w3.org/2000/svg";
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const fmt = (v, d=4) => {
+  if (!isFinite(v)) return "—";
+  if (v === 0) return "0";
+  const a = Math.abs(v);
+  if (a < 1e-4 || a >= 1e5) return v.toExponential(2);
+  return v.toFixed(d);
+};
+const log10 = x => Math.log(x) / Math.LN10;
+
+function svgEl(tag, attrs={}) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+function addText(svg, x, y, text, cls, anchor="middle") {
+  const t = svgEl("text", {x, y, class: cls, "text-anchor": anchor});
+  t.textContent = text;
+  svg.appendChild(t);
+  return t;
+}
+
+function lineChart(mountId, cfg) {
+  const mount = document.getElementById(mountId);
+  const W = 560, H = cfg.height || 280;
+  const M = {l: 58, r: 16, t: 16, b: 42};
+  const iw = W - M.l - M.r, ih = H - M.t - M.b;
+  const root = mount.closest(".card");
+  const tooltip = document.createElement("div");
+  tooltip.className = "tooltip";
+  root.appendChild(tooltip);
+
+  const svg = svgEl("svg", {viewBox:`0 0 ${W} ${H}`, role:"img", "aria-label":cfg.aria||""});
+  mount.appendChild(svg);
+
+  const xd = cfg.xDomain, yd = cfg.yDomain;
+  const xScale = v => {
+    if (cfg.xLog) return M.l + (log10(v)-log10(xd[0]))/(log10(xd[1])-log10(xd[0]))*iw;
+    return M.l + (v-xd[0])/(xd[1]-xd[0])*iw;
+  };
+  const yScale = v => {
+    let t;
+    if (cfg.yLog) t = (log10(v)-log10(yd[0]))/(log10(yd[1])-log10(yd[0]));
+    else t = (v-yd[0])/(yd[1]-yd[0]);
+    return M.t + (1-t)*ih;
+  };
+
+  cfg.xTicks.forEach(v => {
+    const x = xScale(v);
+    svg.appendChild(svgEl("line", {x1:x,x2:x,y1:M.t,y2:M.t+ih,class:"gridline"}));
+    addText(svg, x, M.t+ih+17, cfg.xFmt ? cfg.xFmt(v) : String(v), "tick");
+  });
+  cfg.yTicks.forEach(v => {
+    const y = yScale(v);
+    svg.appendChild(svgEl("line", {x1:M.l,x2:M.l+iw,y1:y,y2:y,class:"gridline"}));
+    addText(svg, M.l-7, y+3.5, cfg.yFmt ? cfg.yFmt(v) : fmt(v,2), "tick", "end");
+  });
+  svg.appendChild(svgEl("line", {x1:M.l,x2:M.l,y1:M.t,y2:M.t+ih,class:"axis"}));
+  svg.appendChild(svgEl("line", {x1:M.l,x2:M.l+iw,y1:M.t+ih,y2:M.t+ih,class:"axis"}));
+  addText(svg, M.l+iw/2, H-6, cfg.xLabel, "axis-title");
+  const yt = addText(svg, 14, M.t+ih/2, cfg.yLabel, "axis-title");
+  yt.setAttribute("transform", `rotate(-90 14 ${M.t+ih/2})`);
+
+  (cfg.refs||[]).forEach(r => {
+    const y = yScale(r.y);
+    svg.appendChild(svgEl("line", {x1:M.l,x2:M.l+iw,y1:y,y2:y,class:"ref",stroke:r.color}));
+    const t = addText(svg, M.l+6, y-5, r.label, "tick", "start");
+    t.style.fill = r.color;
+  });
+  if (cfg.vLine) {
+    const x = xScale(cfg.vLine.x);
+    svg.appendChild(svgEl("line", {x1:x,x2:x,y1:M.t,y2:M.t+ih,stroke:cfg.vLine.color,"stroke-width":1.8,"stroke-dasharray":"3 4"}));
+    const t = addText(svg, x+5, M.t+12, cfg.vLine.label, "tick", "start");
+    t.style.fill = cfg.vLine.color;
+  }
+
+  const paths = [];
+  cfg.series.forEach(s => {
+    const d = s.values.map((p,i) => `${i?"L":"M"}${xScale(p[0]).toFixed(2)},${yScale(p[1]).toFixed(2)}`).join(" ");
+    const path = svgEl("path", {d, class:"series-line", stroke:`var(${s.colorVar})`});
+    svg.appendChild(path);
+    paths.push(path);
+    (s.points||[]).forEach(p => {
+      svg.appendChild(svgEl("circle", {cx:xScale(p[0]),cy:yScale(p[1]),r:5.2,fill:`var(${s.colorVar})`,stroke:"var(--surface-1)","stroke-width":2}));
+    });
+    if (s.endLabel) {
+      const last = s.values[s.values.length-1];
+      const t = addText(svg, M.l+iw-4, yScale(last[1])-8, s.endLabel, "direct-label", "end");
+      t.style.fill = `var(${s.colorVar})`;
+    }
+  });
+
+  const cross = svgEl("line", {x1:0,x2:0,y1:M.t,y2:M.t+ih,class:"crosshair"});
+  svg.appendChild(cross);
+  const dots = cfg.series.map(s => {
+    const c = svgEl("circle", {class:"hover-dot", fill:`var(${s.colorVar})`});
+    svg.appendChild(c);
+    return c;
+  });
+  const overlay = svgEl("rect", {x:M.l,y:M.t,width:iw,height:ih,class:"overlay",tabindex:0,"aria-label":"图表方向键浏览数值"});
+  svg.appendChild(overlay);
+
+  let idx = -1;
+  const xs = cfg.hoverXs || cfg.series[0].values.map(p=>p[0]);
+  function show(i) {
+    idx = Math.max(0, Math.min(xs.length-1, i));
+    const x = xScale(xs[idx]);
+    cross.setAttribute("x1", x); cross.setAttribute("x2", x);
+    cross.style.visibility = "visible";
+    let html = `<div class="tt-title">${cfg.tooltipX(xs[idx])}</div>`;
+    cfg.series.forEach((s,j) => {
+      const nearest = s.values.reduce((best,p) => Math.abs(p[0]-xs[idx]) < Math.abs(best[0]-xs[idx]) ? p : best, s.values[0]);
+      const y = yScale(nearest[1]);
+      dots[j].setAttribute("cx", xScale(nearest[0]));
+      dots[j].setAttribute("cy", y);
+      dots[j].style.visibility = "visible";
+      html += `<div class="tt-row"><i class="tt-key" style="background:var(${s.colorVar})"></i>
+        <span>${s.label}</span><span class="tt-val">${cfg.tooltipY(nearest[1])}</span></div>`;
+    });
+    tooltip.innerHTML = html;
+    tooltip.style.visibility = "visible";
+    const box = mount.getBoundingClientRect();
+    let left = (x / W) * box.width + 12;
+    if (left + 210 > box.width) left -= 220;
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = "26px";
+  }
+  function hide() {
+    cross.style.visibility = "hidden";
+    dots.forEach(d => d.style.visibility = "hidden");
+    tooltip.style.visibility = "hidden";
+  }
+  overlay.addEventListener("pointermove", e => {
+    const rect = svg.getBoundingClientRect();
+    const px = (e.clientX-rect.left) / rect.width * W;
+    let best = 0, bd = Infinity;
+    xs.forEach((x,i) => { const dd=Math.abs(xScale(x)-px); if(dd<bd){bd=dd;best=i;} });
+    show(best);
+  });
+  overlay.addEventListener("pointerleave", hide);
+  overlay.addEventListener("focus", () => show(Math.floor(xs.length/2)));
+  overlay.addEventListener("blur", hide);
+  overlay.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") { e.preventDefault(); show(idx-1); }
+    if (e.key === "ArrowRight") { e.preventDefault(); show(idx+1); }
+  });
+}
+
+function kpis() {
+  const e = D.estimates.q_1_256;
+  const items = [
+    ["十分钟预算", "0.500 q", "1/512 = " + fmt(e.budget,7)],
+    ["线性反解 δ", fmt(e.delta_per_frame,3), "每帧固定偏差；60fps"],
+    ["平方根反解 σ", fmt(e.sigma_per_frame_rms,3), "单帧舍入 RMS；均匀界 √3σ=" + fmt(Math.sqrt(3)*e.sigma_per_frame_rms,3)],
+    ["实测 α", D.fits.linear.alpha.toFixed(3)+" / "+D.fits.sqrt.alpha.toFixed(3), "线性模型 / 平方根模型"],
+  ];
+  document.getElementById("kpis").innerHTML = items.map(([l,v,h]) =>
+    `<div class="kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="hint">${h}</div></div>`).join("");
+}
+
+function charts() {
+  const rtLin = D.runtime_curves.map(p=>[p.minutes,p.linear_quant]);
+  const rtSqrt = D.runtime_curves.map(p=>[p.minutes,p.sqrt_quant]);
+  const ptsLin = D.runs.filter(r=>r.model==="linear").map(r=>[r.duration_min,r.offset_quant]);
+  const ptsSqrt = D.runs.filter(r=>r.model==="sqrt").map(r=>[r.duration_min,r.offset_quant]);
+  lineChart("runtimeChart", {
+    aria:"漂移随运行时间的双对数曲线", height:310,
+    xDomain:[1,60], yDomain:[0.03,4], xLog:true, yLog:true,
+    xTicks:[1,2,5,10,30,60], yTicks:[0.05,0.1,0.2,0.5,1,2,3],
+    xLabel:"运行时间（分钟，对数）", yLabel:"偏移（量化级，对数）",
+    xFmt:v=>String(v), yFmt:v=>v.toString(),
+    tooltipX:x=>`${fmt(x, x<2?2:0)} 分钟`, tooltipY:y=>`${fmt(y,4)} q`,
+    refs:[{y:0.5,color:"var(--critical)",label:"预算 0.5 q"}],
+    series:[
+      {label:"线性 D=δN", values:rtLin, colorVar:"--s1", endLabel:"线性 α=1.000", points:ptsLin},
+      {label:"平方根 RMS=σ√N", values:rtSqrt, colorVar:"--s2", endLabel:"平方根 α=0.501", points:ptsSqrt},
+    ]
+  });
+
+  const rcLin = D.reset_curves.map(p=>[p.seconds,p.linear_quant]);
+  const rcSqrt = D.reset_curves.map(p=>[p.seconds,p.sqrt_quant]);
+  lineChart("resetDriftChart", {
+    aria:"漂移随清零间隔变化", height:270,
+    xDomain:[1/60,3600], yDomain:[1e-5,4], xLog:true, yLog:true,
+    xTicks:[1/60,1,10,60,600,3600], yTicks:[1e-5,1e-4,1e-3,1e-2,0.1,0.5,1,3],
+    xLabel:"清零间隔（秒，对数）", yLabel:"间隔内漂移（q，对数）",
+    xFmt:v=>v<1?`${Math.round(v*60)}帧`:(v>=60?`${v/60}分`:`${v}秒`),
+    yFmt:v=>v.toString(),
+    tooltipX:x=>x<1?`${Math.round(x*60)} 帧`:(`${fmt(x, x<10?1:0)} 秒`),
+    tooltipY:y=>`${fmt(y,4)} q`,
+    refs:[{y:0.5,color:"var(--critical)",label:"预算"}],
+    vLine:{x:D.policy_seconds,color:"var(--good)",label:"采用 10s"},
+    series:[
+      {label:"线性包络", values:rcLin, colorVar:"--s1"},
+      {label:"平方根 RMS", values:rcSqrt, colorVar:"--s2"},
+    ]
+  });
+
+  const cc = D.reset_curves.map(p=>[p.seconds,p.continuity]);
+  const ccPts = D.continuity_check.map(p=>[p.seconds,p.continuity]);
+  lineChart("continuityChart", {
+    aria:"时域连续性随清零间隔变化", height:270,
+    xDomain:[1/60,3600], yDomain:[0,1.02], xLog:true, yLog:false,
+    xTicks:[1/60,1,10,60,600,3600], yTicks:[0,.25,.5,.75,.9,.95,1],
+    xLabel:"清零间隔（秒，对数）", yLabel:"连续性分数 C",
+    xFmt:v=>v<1?`${Math.round(v*60)}帧`:(v>=60?`${v/60}分`:`${v}秒`),
+    yFmt:v=>fmt(v,2),
+    tooltipX:x=>x<1?`${Math.round(x*60)} 帧`:`${fmt(x,1)} 秒`,
+    tooltipY:y=>fmt(y,4),
+    refs:[{y:.95,color:"var(--budget)",label:"目标 C=0.95"}],
+    vLine:{x:D.policy_seconds,color:"var(--good)",label:"10s"},
+    series:[
+      {label:"C=1−1/√R", values:cc, colorVar:"--s3", points:ccPts},
+    ]
+  });
+}
+
+function tables() {
+  const tb = document.querySelector("#runTable tbody");
+  tb.replaceChildren();
+  D.runs.forEach(r => {
+    const tr = document.createElement("tr");
+    const model = document.createElement("td");
+    const badge = document.createElement("span");
+    badge.className = "badge " + r.model;
+    badge.textContent = r.model === "linear" ? "固定偏差 / α=" + D.fits.linear.alpha.toFixed(3)
+                                              : "舍入随机游走 / α=" + D.fits.sqrt.alpha.toFixed(3);
+    model.appendChild(badge);
+    const cells = [
+      null,
+      `${r.duration_min} min`,
+      r.frames.toLocaleString("en-US"),
+      fmt(r.offset_quant,4),
+      r.model === "linear" ? "线性" : "平方根",
+      r.bare_pass ? "达标" : "超出 " + fmt(r.offset_quant/0.5,2) + "×",
+      fmt(r.boundary_rms_quant,4),
+      fmt(r.policy_max_abs_quant,3),
+      r.policy_pass ? "达标" : "超出",
+    ];
+    tr.appendChild(model);
+    cells.slice(1).forEach((v,i) => {
+      const td = document.createElement("td");
+      td.textContent = v;
+      if (i === 4) td.className = r.bare_pass ? "pass" : "fail";
+      if (i === 7) td.className = r.policy_pass ? "pass" : "fail";
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+
+  const ct = document.querySelector("#continuityTable tbody");
+  D.continuity_check.forEach(r => {
+    const tr = document.createElement("tr");
+    [r.r===1?"每帧":`${r.r} 帧`, `${fmt(r.seconds,2)} s`, fmt(r.diff_rms,6), fmt(r.theory_diff_rms,6), fmt(r.continuity,5)]
+      .forEach(v => { const td=document.createElement("td"); td.textContent=v; tr.appendChild(td); });
+    ct.appendChild(tr);
+  });
+}
+
+document.getElementById("themeBtn").addEventListener("click", () => {
+  const root = document.documentElement;
+  const dark = root.getAttribute("data-theme") === "dark" ||
+    (!root.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+  root.setAttribute("data-theme", dark ? "light" : "dark");
+});
+kpis(); charts(); tables();
+</script>
+</body>
+</html>
