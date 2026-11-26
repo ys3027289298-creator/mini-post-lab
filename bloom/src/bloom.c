@@ -1,6 +1,7 @@
 
 /* bloom: bright-pass extraction and separable box blur. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
@@ -19,7 +20,8 @@ static int bright_pass(const float* src, float* dst, int n, float threshold) {
 /* separable box blur with radius r, clamped edges */
 static int box_blur(const float* src, float* dst, int w, int h, int r) {
     if (w <= 0 || h <= 0 || r < 0 || r * 2 + 1 > w || r * 2 + 1 > h) return -1;
-    float tmp[W*H];
+    float* tmp = malloc((size_t)w * (size_t)h * sizeof(*tmp));
+    if (tmp == NULL) return -2;
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
             float s = 0.0f;
@@ -44,6 +46,7 @@ static int box_blur(const float* src, float* dst, int w, int h, int r) {
             dst[y * w + x] = s / (float)(2 * r + 1);
         }
     }
+    free(tmp);
     return 0;
 }
 
