@@ -1,0 +1,243 @@
+{
+  "thresholds": {
+    "D_star": 0.75,
+    "C_star": 4.0,
+    "G": 40.0,
+    "dark_zone_fraction": 0.2
+  },
+  "range_limit": {
+    "R_star": 730.2632264669651,
+    "stops_star": 9.512272773038688,
+    "asymptotic_R": 1077.6082691608658,
+    "form": "R*: root of R = (5G/D*)(R^0.2 - 1)"
+  },
+  "log_family_limits": {
+    "C_min": 9.0,
+    "C_max_supremum": 21.854345326720544
+  },
+  "scenes": [
+    {
+      "name": "bright",
+      "R": 64.0,
+      "stops": 6.0,
+      "over_dr_limit": false,
+      "families": [
+        {
+          "family": "power",
+          "feasible_shape": true,
+          "interval": [
+            1.0,
+            1.1787469216608009
+          ],
+          "param_pick": 1.1787469216608009,
+          "D_analytic": 0.7499999999999999,
+          "C_analytic": 13.329394465737646,
+          "gain": 7.399432976860157,
+          "passes": true,
+          "reason": "pass",
+          "D_empirical": 0.75,
+          "C_empirical": 13.218923212244892,
+          "shadow_pixels": 39805,
+          "filled_bins": 30,
+          "dark_bins": 40,
+          "literal_wholehist_D": 1.0,
+          "D_error": 1.1102230246251565e-16,
+          "C_error": 0.11047125349275433
+        },
+        {
+          "family": "log",
+          "feasible_shape": true,
+          "interval": [
+            1e-09,
+            1.0696413397320392
+          ],
+          "param_pick": 1.0696413397320392,
+          "D_analytic": 0.7499999999995299,
+          "C_analytic": 11.792026482557338,
+          "gain": 7.399432976855519,
+          "passes": true,
+          "reason": "pass",
+          "D_empirical": 0.75,
+          "C_empirical": 11.7053543021536,
+          "shadow_pixels": 39805,
+          "filled_bins": 30,
+          "dark_bins": 40,
+          "literal_wholehist_D": 1.0,
+          "D_error": 4.700684286262913e-13,
+          "C_error": 0.08667218040373825
+        },
+        {
+          "family": "piecewise_linear",
+          "feasible_shape": true,
+          "interval": [
+            0.15000000000000002,
+            0.2
+          ],
+          "param_pick": 0.15000000000000002,
+          "D_analytic": 0.7500000000000001,
+          "C_analytic": 11.916666666666664,
+          "gain": 7.399432976860158,
+          "passes": true,
+          "reason": "pass",
+          "D_empirical": 0.75,
+          "C_empirical": 11.832540972533055,
+          "shadow_pixels": 39805,
+          "filled_bins": 30,
+          "dark_bins": 40,
+          "literal_wholehist_D": 1.0,
+          "D_error": 1.1102230246251565e-16,
+          "C_error": 0.08412569413360949
+        }
+      ]
+    },
+    {
+      "name": "medium",
+      "R": 256.0,
+      "stops": 8.0,
+      "over_dr_limit": false,
+      "families": [
+        {
+          "family": "power",
+          "feasible_shape": true,
+          "interval": [
+            1.0,
+            1.1787469216608009
+          ],
+          "param_pick": 1.1787469216608009,
+          "D_analytic": 0.7499999999999999,
+          "C_analytic": 13.329394465737646,
+          "gain": 18.902911139830703,
+          "passes": true,
+          "reason": "pass",
+          "D_empirical": 0.75,
+          "C_empirical": 13.332335283224882,
+          "shadow_pixels": 39740,
+          "filled_bins": 30,
+          "dark_bins": 40,
+          "literal_wholehist_D": 1.0,
+          "D_error": 1.1102230246251565e-16,
+          "C_error": 0.0029408174872358472
+        },
+        {
+          "family": "log",
+          "feasible_shape": true,
+          "interval": [
+            1e-09,
+            1.0696413397320392
+          ],
+          "param_pick": 1.0696413397320392,
+          "D_analytic": 0.7499999999995299,
+          "C_analytic": 11.792026482557338,
+          "gain": 18.902911139818855,
+          "passes": true,
+          "reason": "pass",
+          "D_empirical": 0.75,
+          "C_empirical": 11.802193154080632,
+          "shadow_pixels": 39740,
+          "filled_bins": 30,
+          "dark_bins": 40,
+          "literal_wholehist_D": 1.0,
+          "D_error": 4.700684286262913e-13,
+          "C_error": 0.010166671523293758
+        },
+        {
+          "family": "piecewise_linear",
+          "feasible_shape": true,
+          "interval": [
+            0.15000000000000002,
+            0.2
+          ],
+          "param_pick": 0.15000000000000002,
+          "D_analytic": 0.7500000000000001,
+          "C_analytic": 11.916666666666664,
+          "gain": 18.902911139830707,
+          "passes": true,
+          "reason": "pass",
+          "D_empirical": 0.75,
+          "C_empirical": 11.920431601898635,
+          "shadow_pixels": 39740,
+          "filled_bins": 30,
+          "dark_bins": 40,
+          "literal_wholehist_D": 1.0,
+          "D_error": 1.1102230246251565e-16,
+          "C_error": 0.003764935231970412
+        }
+      ]
+    },
+    {
+      "name": "dark",
+      "R": 4096.0,
+      "stops": 12.0,
+      "over_dr_limit": true,
+      "families": [
+        {
+          "family": "power",
+          "feasible_shape": true,
+          "interval": [
+            1.0,
+            1.1787469216608009
+          ],
+          "param_pick": 1.1787469216608009,
+          "D_analytic": 0.7499999999999999,
+          "C_analytic": 13.329394465737646,
+          "gain": 143.6174510284817,
+          "passes": false,
+          "reason": "DR exceeded: gain 143.6 > budget 40",
+          "D_empirical": 0.75,
+          "C_empirical": 13.538186907749026,
+          "shadow_pixels": 40499,
+          "filled_bins": 30,
+          "dark_bins": 40,
+          "literal_wholehist_D": 1.0,
+          "D_error": 1.1102230246251565e-16,
+          "C_error": 0.20879244201137936
+        },
+        {
+          "family": "log",
+          "feasible_shape": true,
+          "interval": [
+            1e-09,
+            1.0696413397320392
+          ],
+          "param_pick": 1.0696413397320392,
+          "D_analytic": 0.7499999999995299,
+          "C_analytic": 11.792026482557338,
+          "gain": 143.61745102839168,
+          "passes": false,
+          "reason": "DR exceeded: gain 143.6 > budget 40",
+          "D_empirical": 0.75,
+          "C_empirical": 11.949515963223444,
+          "shadow_pixels": 40499,
+          "filled_bins": 30,
+          "dark_bins": 40,
+          "literal_wholehist_D": 1.0,
+          "D_error": 4.700684286262913e-13,
+          "C_error": 0.15748948066610602
+        },
+        {
+          "family": "piecewise_linear",
+          "feasible_shape": true,
+          "interval": [
+            0.15000000000000002,
+            0.2
+          ],
+          "param_pick": 0.15000000000000002,
+          "D_analytic": 0.7500000000000001,
+          "C_analytic": 11.916666666666664,
+          "gain": 143.61745102848172,
+          "passes": false,
+          "reason": "DR exceeded: gain 143.6 > budget 40",
+          "D_empirical": 0.75,
+          "C_empirical": 12.074203517530563,
+          "shadow_pixels": 40499,
+          "filled_bins": 30,
+          "dark_bins": 40,
+          "literal_wholehist_D": 1.0,
+          "D_error": 1.1102230246251565e-16,
+          "C_error": 0.1575368508638988
+        }
+      ],
+      "infeasibility": "R=4096 > R*=730.3: even the best possible curve needs gain 143.6x > budget 40.0x to reach D=0.75; no curve of any family can satisfy both metrics"
+    }
+  ]
+}
