@@ -1,13 +1,17 @@
 CC ?= gcc
 CFLAGS ?= -O2 -std=c11 -Wall -Wextra
 
-all: bloom
+all: bloom bloomcast
 
 bloom: src/bloom.c
 	$(CC) $(CFLAGS) $< -o $@ -lm
 
-test: bloom
+bloomcast: src/bloomcast.c
+	$(CC) $(CFLAGS) $< -o $@ -lm
+
+test: bloom bloomcast
 	./bloom
+	./bloomcast
 
 clean:
-	rm -f bloom
+	rm -f bloom bloomcast

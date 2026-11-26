@@ -1,0 +1,5 @@
+# self-test binaries built by each module's Makefile
+bloom/bloom
+bloom/bloomcast
+tonemap/tonemap
+dof/dof
