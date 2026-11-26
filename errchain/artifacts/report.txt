@@ -1,0 +1,235 @@
+================ errchain: chained post-process error experiment ================
+grid 48x48 = 2304 px | nominal chain N=11 (kb=kd=3) | budget Q=1.0 LSB (one 8-bit quantum)
+
+--- per-step budget solved from total <= Q = 1.0 LSB (N=11) ---
+same-direction (linear):  E = sum e_i  -> cap e_i <= Q/N            = 0.0909 LSB per step
+cancelling (RSS, signs mix): E = sqrt(sum e_i^2) -> cap e_i <= Q/sqrt(N) = 0.3015 LSB per step
+a chain is feasible only when every step's output contribution stays under the matching cap.
+
+############################################################
+scenario light_rain: peak radiance 2.42, exposure 1.00
+
+---------- tier R8_UNORM ----------
+end-to-end at N=11: RMS=9.0865 LSB  mean=4.8147  max=56.0000  signed-mean=-4.7964  rms-rel=5.44e-02  => FAIL (Q=1)
+step              local_rms      pos      neg     zero  pos_frac      abl_LSB   abl_signed
+exposure           7.50e-02     1087     1217        0     0.472       9.0981      -4.8194
+bright_pass        6.20e-17      115        0     2189     1.000       0.4088      -0.0499
+bloom_blur1        1.43e-02      115      124     2065     0.481       0.1318      +0.0017
+bloom_blur2        8.70e-02      447      214     1643     0.676       0.1502      -0.0035
+bloom_blur3        2.39e-01      481      579     1244     0.454       0.2879      -0.0074
+aces               2.79e-03     1216     1088        0     0.528       0.1640      +0.0035
+dof_blur1          2.17e-03     1093     1133       78     0.491       0.1909      -0.0095
+dof_blur2          2.17e-03     1128     1101       75     0.506       0.1998      +0.0078
+dof_blur3          2.21e-03     1022     1202       80     0.460       0.3461      -0.0061
+composite          1.41e-03      451      446     1407     0.503       0.0000      +0.0000
+sdr_q8             0.00e+00        0        0     2304     0.500       0.0000      +0.0000
+model check: measured E=9.0865 | linear sum |E_i|=10.9777 (ratio 1.21) | RSS sqrt(sum E_i^2)=9.1263 (ratio 1.00)
+dominant step: exposure (ablation 9.0981 LSB)
+budget check: dominant-step 9.0981 LSB vs linear cap Q/N=0.0909 -> OVER CAP
+output sign test: neg=1435 pos=21 zero=848 | nonzero=0.632 neg/nonzero=0.986 => SAME-DIRECTION, net negative (linear accumulation)
+local store signs (secondary): pos=7155 neg=7104 zero=11085 | pos/nonzero=0.502
+coherence: |signed mean|/RMS = 0.53 (near 1 = errors point one way, near 0 = they cancel)
+
+N sweep: N7[11.694X,q75] N9[9.952X,q86] N11[9.087X,q91] N13[8.531X,q93] N15[8.156X,q95]
+selected knee N* = none (no feasible N at this tier)
+
+---------- tier R16F ----------
+end-to-end at N=11: RMS=0.2041 LSB  mean=0.0417  max=1.0000  signed-mean=+0.0078  rms-rel=1.49e-03  => PASS (Q=1)
+step              local_rms      pos      neg     zero  pos_frac      abl_LSB   abl_signed
+exposure           2.03e-04     1168     1136        0     0.507       0.0417      +0.0017
+bright_pass        5.64e-05       92       23     2189     0.800       0.0000      +0.0000
+bloom_blur1        8.66e-05      204      187     1913     0.522       0.0208      -0.0004
+bloom_blur2        1.20e-04      369      341     1594     0.520       0.0000      +0.0000
+bloom_blur3        1.41e-04      528      493     1283     0.517       0.0295      +0.0000
+aces               2.05e-04     1103     1201        0     0.479       0.0691      -0.0004
+dof_blur1          2.07e-04     1098     1106      100     0.498       0.0589      +0.0017
+dof_blur2          2.25e-04     1115     1083      106     0.507       0.0722      +0.0009
+dof_blur3          2.29e-04     1105     1080      119     0.506       0.1887      +0.0078
+composite          1.76e-04      580      551     1173     0.513       0.1898      +0.0030
+sdr_q8             2.21e-03     1160     1142        2     0.504       0.0000      +0.0000
+model check: measured E=0.2041 | linear sum |E_i|=0.6706 (ratio 3.29) | RSS sqrt(sum E_i^2)=0.2968 (ratio 1.45)
+dominant step: composite (ablation 0.1898 LSB)
+budget check: dominant-step 0.1898 LSB vs linear cap Q/N=0.0909 -> OVER CAP
+output sign test: neg=39 pos=57 zero=2208 | nonzero=0.042 neg/nonzero=0.406 => negligible: <5% pixels differ (sub-quantum, effectively no error)
+local store signs (secondary): pos=8522 neg=8343 zero=8479 | pos/nonzero=0.505
+coherence: |signed mean|/RMS = 0.04 (near 1 = errors point one way, near 0 = they cancel)
+
+N sweep: N7[0.167ok,q75] N9[0.201ok,q86] N11[0.204ok,q91] N13[0.185ok,q93] N15[0.201ok,q95]
+selected knee N* = 9
+
+---------- tier fp32 ----------
+end-to-end at N=11: RMS=0.0000 LSB  mean=0.0000  max=0.0000  signed-mean=+0.0000  rms-rel=0.00e+00  => PASS (Q=1)
+step              local_rms      pos      neg     zero  pos_frac      abl_LSB   abl_signed
+exposure           2.48e-08     1087     1135       82     0.489       0.0000      +0.0000
+bright_pass        5.12e-09        8      107     2189     0.070       0.0000      +0.0000
+bloom_blur1        1.06e-08      180      191     1933     0.485       0.0000      +0.0000
+bloom_blur2        1.50e-08      378      331     1595     0.533       0.0000      +0.0000
+bloom_blur3        1.85e-08      503      565     1236     0.471       0.0000      +0.0000
+aces               2.52e-08     1135     1169        0     0.493       0.0000      +0.0000
+dof_blur1          2.51e-08     1119     1088       97     0.507       0.0000      +0.0000
+dof_blur2          2.74e-08     1081     1109      114     0.494       0.0000      +0.0000
+dof_blur3          2.80e-08     1134     1073       97     0.514       0.0000      +0.0000
+composite          2.12e-08      586      551     1167     0.515       0.0000      +0.0000
+sdr_q8             2.20e-03     1136     1166        2     0.493       0.0000      +0.0000
+model check: measured E=0.0000 | linear sum |E_i|=0.0000 (ratio 0.00) | RSS sqrt(sum E_i^2)=0.0000 (ratio 0.00)
+dominant step: exposure (ablation 0.0000 LSB)
+budget check: dominant-step 0.0000 LSB vs linear cap Q/N=0.0909 -> within cap
+output sign test: neg=0 pos=0 zero=2304 | nonzero=0.000 neg/nonzero=0.500 => negligible: <5% pixels differ (sub-quantum, effectively no error)
+local store signs (secondary): pos=8347 neg=8485 zero=8512 | pos/nonzero=0.496
+coherence: |signed mean|/RMS = 0.00 (near 1 = errors point one way, near 0 = they cancel)
+
+N sweep: N7[0.000ok,q75] N9[0.000ok,q86] N11[0.000ok,q91] N13[0.000ok,q93] N15[0.000ok,q95]
+selected knee N* = 9
+
+############################################################
+scenario medium_rain: peak radiance 12.58, exposure 1.25
+
+---------- tier R8_UNORM ----------
+end-to-end at N=11: RMS=67.9674 LSB  mean=53.5425  max=140.0000  signed-mean=-53.5408  rms-rel=2.88e-01  => FAIL (Q=1)
+step              local_rms      pos      neg     zero  pos_frac      abl_LSB   abl_signed
+exposure           2.79e-01     1045     1259        0     0.454      68.0340     -53.6280
+bright_pass        1.03e-16      318        0     1986     1.000      41.7204     -31.0712
+bloom_blur1        1.91e-02      232      280     1792     0.453       9.3771      -4.0469
+bloom_blur2        9.33e-02      752      541     1011     0.582       2.6597      -0.6120
+bloom_blur3        2.31e-01      845      954      505     0.470       0.2961      +0.0052
+aces               2.72e-03     1430      874        0     0.621       0.1531      -0.0078
+dof_blur1          2.19e-03     1089     1145       70     0.487       0.1667      -0.0095
+dof_blur2          2.17e-03     1165     1067       72     0.522       0.1875      -0.0004
+dof_blur3          2.17e-03     1174     1050       80     0.528       0.3870      -0.0143
+composite          1.82e-03      793      796      715     0.499       0.0000      +0.0000
+sdr_q8             0.00e+00        0        0     2304     0.500       0.0000      +0.0000
+model check: measured E=67.9674 | linear sum |E_i|=122.9814 (ratio 1.81) | RSS sqrt(sum E_i^2)=80.4024 (ratio 1.18)
+dominant step: exposure (ablation 68.0340 LSB)
+budget check: dominant-step 68.0340 LSB vs linear cap Q/N=0.0909 -> OVER CAP
+output sign test: neg=2245 pos=2 zero=57 | nonzero=0.975 neg/nonzero=0.999 => SAME-DIRECTION, net negative (linear accumulation)
+local store signs (secondary): pos=8843 neg=7966 zero=8535 | pos/nonzero=0.526
+coherence: |signed mean|/RMS = 0.79 (near 1 = errors point one way, near 0 = they cancel)
+
+N sweep: N7[61.322X,q59] N9[65.749X,q71] N11[67.967X,q78] N13[69.513X,q82] N15[70.504X,q86]
+selected knee N* = none (no feasible N at this tier)
+
+---------- tier R16F ----------
+end-to-end at N=11: RMS=0.1840 LSB  mean=0.0339  max=1.0000  signed-mean=-0.0078  rms-rel=1.17e-03  => PASS (Q=1)
+step              local_rms      pos      neg     zero  pos_frac      abl_LSB   abl_signed
+exposure           2.15e-04     1130     1174        0     0.490       0.0659      +0.0000
+bright_pass        8.65e-05       92      226     1986     0.289       0.0551      +0.0022
+bloom_blur1        1.35e-04      450      453     1401     0.498       0.0510      +0.0017
+bloom_blur2        1.70e-04      660      706      938     0.483       0.0510      +0.0000
+bloom_blur3        1.88e-04      870      902      532     0.491       0.0780      +0.0000
+aces               1.90e-04     1079     1189       36     0.476       0.0589      -0.0009
+dof_blur1          2.23e-04     1099     1099      106     0.500       0.0589      -0.0009
+dof_blur2          2.35e-04     1082     1115      107     0.492       0.0807      -0.0013
+dof_blur3          2.46e-04     1116     1077      111     0.509       0.1627      -0.0022
+composite          1.57e-04      617      615     1072     0.501       0.1627      -0.0013
+sdr_q8             1.58e-03      865      856      583     0.503       0.0000      +0.0000
+model check: measured E=0.1840 | linear sum |E_i|=0.8250 (ratio 4.48) | RSS sqrt(sum E_i^2)=0.2917 (ratio 1.59)
+dominant step: dof_blur3 (ablation 0.1627 LSB)
+budget check: dominant-step 0.1627 LSB vs linear cap Q/N=0.0909 -> OVER CAP
+output sign test: neg=48 pos=30 zero=2226 | nonzero=0.034 neg/nonzero=0.615 => negligible: <5% pixels differ (sub-quantum, effectively no error)
+local store signs (secondary): pos=9060 neg=9412 zero=6872 | pos/nonzero=0.490
+coherence: |signed mean|/RMS = 0.04 (near 1 = errors point one way, near 0 = they cancel)
+
+N sweep: N7[0.143ok,q59] N9[0.171ok,q71] N11[0.184ok,q78] N13[0.183ok,q82] N15[0.160ok,q86]
+selected knee N* = 11
+
+---------- tier fp32 ----------
+end-to-end at N=11: RMS=0.0000 LSB  mean=0.0000  max=0.0000  signed-mean=+0.0000  rms-rel=0.00e+00  => PASS (Q=1)
+step              local_rms      pos      neg     zero  pos_frac      abl_LSB   abl_signed
+exposure           2.57e-08     1280      963       61     0.571       0.0000      +0.0000
+bright_pass        9.62e-09      222       96     1986     0.698       0.0000      +0.0000
+bloom_blur1        1.65e-08      418      470     1416     0.471       0.0000      +0.0000
+bloom_blur2        2.04e-08      685      702      917     0.494       0.0000      +0.0000
+bloom_blur3        2.37e-08      930      864      510     0.518       0.0000      +0.0000
+aces               2.30e-08     1131     1137       36     0.499       0.0000      +0.0000
+dof_blur1          2.71e-08     1078     1135       91     0.487       0.0000      +0.0000
+dof_blur2          2.89e-08     1121     1084       99     0.508       0.0000      +0.0000
+dof_blur3          2.97e-08     1134     1073       97     0.514       0.0000      +0.0000
+composite          1.95e-08      655      577     1072     0.532       0.0000      +0.0000
+sdr_q8             1.58e-03      874      847      583     0.508       0.0000      +0.0000
+model check: measured E=0.0000 | linear sum |E_i|=0.0000 (ratio 0.00) | RSS sqrt(sum E_i^2)=0.0000 (ratio 0.00)
+dominant step: exposure (ablation 0.0000 LSB)
+budget check: dominant-step 0.0000 LSB vs linear cap Q/N=0.0909 -> within cap
+output sign test: neg=0 pos=0 zero=2304 | nonzero=0.000 neg/nonzero=0.500 => negligible: <5% pixels differ (sub-quantum, effectively no error)
+local store signs (secondary): pos=9528 neg=8948 zero=6868 | pos/nonzero=0.516
+coherence: |signed mean|/RMS = 0.00 (near 1 = errors point one way, near 0 = they cancel)
+
+N sweep: N7[0.000ok,q59] N9[0.000ok,q71] N11[0.000ok,q78] N13[0.000ok,q82] N15[0.000ok,q86]
+selected knee N* = 11
+
+############################################################
+scenario heavy_rain: peak radiance 18.68, exposure 1.50
+
+---------- tier R8_UNORM ----------
+end-to-end at N=11: RMS=98.2104 LSB  mean=88.8056  max=152.0000  signed-mean=-88.8047  rms-rel=4.01e-01  => FAIL (Q=1)
+step              local_rms      pos      neg     zero  pos_frac      abl_LSB   abl_signed
+exposure           4.00e-01      898     1406        0     0.390      98.2140     -88.8186
+bright_pass        1.28e-16      492        0     1812     1.000      63.4186     -53.2817
+bloom_blur1        1.96e-02      322      384     1598     0.456      22.4532     -12.8785
+bloom_blur2        8.57e-02      909      661      734     0.579       8.3400      -3.0946
+bloom_blur3        1.72e-01      962     1017      325     0.486       0.3187      -0.0139
+aces               2.54e-03     1241     1063        0     0.539       0.1083      -0.0039
+dof_blur1          2.37e-03     1116     1114       74     0.500       0.1215      -0.0061
+dof_blur2          2.33e-03     1127     1109       68     0.504       0.1334      +0.0022
+dof_blur3          2.33e-03     1087     1148       69     0.486       0.2834      -0.0048
+composite          2.16e-03      920      921      463     0.500       0.0000      +0.0000
+sdr_q8             0.00e+00        0        0     2304     0.500       0.0000      +0.0000
+model check: measured E=98.2104 | linear sum |E_i|=193.3910 (ratio 1.97) | RSS sqrt(sum E_i^2)=119.3392 (ratio 1.22)
+dominant step: exposure (ablation 98.2140 LSB)
+budget check: dominant-step 98.2140 LSB vs linear cap Q/N=0.0909 -> OVER CAP
+output sign test: neg=2299 pos=1 zero=4 | nonzero=0.998 neg/nonzero=1.000 => SAME-DIRECTION, net negative (linear accumulation)
+local store signs (secondary): pos=9074 neg=8823 zero=7447 | pos/nonzero=0.507
+coherence: |signed mean|/RMS = 0.90 (near 1 = errors point one way, near 0 = they cancel)
+
+N sweep: N7[83.563X,q69] N9[93.765X,q81] N11[98.210X,q86] N13[101.360X,q89] N15[103.601X,q91]
+selected knee N* = none (no feasible N at this tier)
+
+---------- tier R16F ----------
+end-to-end at N=11: RMS=0.1141 LSB  mean=0.0130  max=1.0000  signed-mean=+0.0009  rms-rel=7.01e-04  => PASS (Q=1)
+step              local_rms      pos      neg     zero  pos_frac      abl_LSB   abl_signed
+exposure           2.23e-04     1158     1146        0     0.503       0.0589      -0.0009
+bright_pass        1.08e-04      197      295     1812     0.400       0.0295      +0.0009
+bloom_blur1        1.55e-04      547      618     1139     0.470       0.0208      -0.0004
+bloom_blur2        1.86e-04      855      849      600     0.502       0.0417      +0.0009
+bloom_blur3        2.01e-04     1029      979      296     0.512       0.0417      +0.0009
+aces               1.65e-04     1001     1021      282     0.495       0.0208      -0.0004
+dof_blur1          2.13e-04     1137     1056      111     0.518       0.0361      -0.0004
+dof_blur2          2.13e-04     1114     1078      112     0.508       0.0000      +0.0000
+dof_blur3          2.14e-04     1100     1095      109     0.501       0.0807      -0.0004
+composite          1.18e-04      376      342     1586     0.524       0.1042      +0.0013
+sdr_q8             1.22e-03      472      458     1374     0.508       0.0000      +0.0000
+model check: measured E=0.1141 | linear sum |E_i|=0.4343 (ratio 3.81) | RSS sqrt(sum E_i^2)=0.1654 (ratio 1.45)
+dominant step: composite (ablation 0.1042 LSB)
+budget check: dominant-step 0.1042 LSB vs linear cap Q/N=0.0909 -> OVER CAP
+output sign test: neg=14 pos=16 zero=2274 | nonzero=0.013 neg/nonzero=0.467 => negligible: <5% pixels differ (sub-quantum, effectively no error)
+local store signs (secondary): pos=8986 neg=8937 zero=7421 | pos/nonzero=0.501
+coherence: |signed mean|/RMS = 0.01 (near 1 = errors point one way, near 0 = they cancel)
+
+N sweep: N7[0.110ok,q69] N9[0.110ok,q81] N11[0.114ok,q86] N13[0.118ok,q89] N15[0.114ok,q91]
+selected knee N* = 11
+
+---------- tier fp32 ----------
+end-to-end at N=11: RMS=0.0000 LSB  mean=0.0000  max=0.0000  signed-mean=+0.0000  rms-rel=0.00e+00  => PASS (Q=1)
+step              local_rms      pos      neg     zero  pos_frac      abl_LSB   abl_signed
+exposure           2.62e-08     1207     1097        0     0.524       0.0000      +0.0000
+bright_pass        1.32e-08       85      407     1812     0.173       0.0000      +0.0000
+bloom_blur1        1.96e-08      657      549     1098     0.545       0.0000      +0.0000
+bloom_blur2        2.25e-08      856      853      595     0.501       0.0000      +0.0000
+bloom_blur3        2.46e-08     1031      963      310     0.517       0.0000      +0.0000
+aces               2.03e-08     1030      992      282     0.509       0.0000      +0.0000
+dof_blur1          2.54e-08     1087     1119       98     0.493       0.0000      +0.0000
+dof_blur2          2.60e-08     1102     1103       99     0.500       0.0000      +0.0000
+dof_blur3          2.69e-08     1099     1109       96     0.498       0.0000      +0.0000
+composite          1.42e-08      365      326     1613     0.528       0.0000      +0.0000
+sdr_q8             1.22e-03      469      461     1374     0.504       0.0000      +0.0000
+model check: measured E=0.0000 | linear sum |E_i|=0.0000 (ratio 0.00) | RSS sqrt(sum E_i^2)=0.0000 (ratio 0.00)
+dominant step: exposure (ablation 0.0000 LSB)
+budget check: dominant-step 0.0000 LSB vs linear cap Q/N=0.0909 -> within cap
+output sign test: neg=0 pos=0 zero=2304 | nonzero=0.000 neg/nonzero=0.500 => negligible: <5% pixels differ (sub-quantum, effectively no error)
+local store signs (secondary): pos=8988 neg=8979 zero=7377 | pos/nonzero=0.500
+coherence: |signed mean|/RMS = 0.00 (near 1 = errors point one way, near 0 = they cancel)
+
+N sweep: N7[0.000ok,q69] N9[0.000ok,q81] N11[0.000ok,q86] N13[0.000ok,q89] N15[0.000ok,q91]
+selected knee N* = 11
+
+wrote artifacts/sweep.csv, artifacts/step_metrics.csv,
+      artifacts/sweep_curves.svg, artifacts/error_breakdown_heavy_R8.svg

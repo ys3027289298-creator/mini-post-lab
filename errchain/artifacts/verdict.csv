@@ -1,0 +1,10 @@
+scenario,tier,N,rms_error_lsb,budget_lsb,passes,output_neg_fraction,coherence_absmean_over_rms,dominant_step,dominant_ablation_lsb,knee_N
+light_rain,R8_UNORM,11,9.086510,1.0,0,0.9856,0.5279,exposure,9.098134,-1
+light_rain,R16F,11,0.204124,1.0,1,0.4062,0.0383,composite,0.189801,9
+light_rain,fp32,11,0.000000,1.0,1,0.5000,0.0000,exposure,0.000000,9
+medium_rain,R8_UNORM,11,67.967415,1.0,0,0.9991,0.7877,exposure,68.033983,-1
+medium_rain,R16F,11,0.183995,1.0,1,0.6154,0.0425,dof_blur3,0.162714,11
+medium_rain,fp32,11,0.000000,1.0,1,0.5000,0.0000,exposure,0.000000,11
+heavy_rain,R8_UNORM,11,98.210446,1.0,0,0.9996,0.9042,exposure,98.214012,-1
+heavy_rain,R16F,11,0.114109,1.0,1,0.4667,0.0076,composite,0.104167,11
+heavy_rain,fp32,11,0.000000,1.0,1,0.5000,0.0000,exposure,0.000000,11

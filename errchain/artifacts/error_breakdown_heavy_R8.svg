@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="446" viewBox="0 0 780 446" font-family="system-ui,sans-serif">
+<rect width="100%" height="100%" fill="#f9f9f7"/>
+<text x="390.0" y="28.0" text-anchor="middle" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="17">Per-step error contribution (single-step ablation): heavy_rain / R8_UNORM</text>
+<text x="390.0" y="49.0" text-anchor="middle" fill="#52514e" font-family="system-ui,sans-serif" font-size="12">bar length = output RMS error (LSB) when only that step quantizes; color = majority sign of its local round-off</text>
+<text x="390.0" y="67.0" text-anchor="middle" fill="#898781" font-family="system-ui,sans-serif" font-size="11">note: color is the in-chain local sign; the bar's output shift can point the other way when the step clamps HDR alone (e.g. bright_pass)</text>
+<line x1="460.0" y1="80.0" x2="460.0" y2="382.0" stroke="#c3c2b7"/>
+<rect x="460.0" y="94.0" width="260.0" height="14" rx="4" fill="#d03b3b"/>
+<text x="190.0" y="106.0" text-anchor="end" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="12">exposure</text>
+<text x="726.0" y="106.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="11">98.2140 LSB  (+:898 -:1406 0:0)</text>
+<rect x="460.0" y="120.0" width="167.9" height="14" rx="4" fill="#2a78d6"/>
+<text x="190.0" y="132.0" text-anchor="end" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="12">bright_pass</text>
+<text x="633.9" y="132.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="11">63.4186 LSB  (+:492 -:0 0:1812)</text>
+<rect x="460.0" y="146.0" width="59.4" height="14" rx="4" fill="#898781"/>
+<text x="190.0" y="158.0" text-anchor="end" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="12">bloom_blur1</text>
+<text x="525.4" y="158.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="11">22.4532 LSB  (+:322 -:384 0:1598)</text>
+<rect x="460.0" y="172.0" width="22.1" height="14" rx="4" fill="#898781"/>
+<text x="190.0" y="184.0" text-anchor="end" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="12">bloom_blur2</text>
+<text x="488.1" y="184.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="11">8.3400 LSB  (+:909 -:661 0:734)</text>
+<rect x="460.0" y="198.0" width="0.8" height="14" rx="4" fill="#898781"/>
+<text x="190.0" y="210.0" text-anchor="end" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="12">bloom_blur3</text>
+<text x="466.8" y="210.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="11">0.3187 LSB  (+:962 -:1017 0:325)</text>
+<rect x="460.0" y="224.0" width="0.3" height="14" rx="4" fill="#898781"/>
+<text x="190.0" y="236.0" text-anchor="end" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="12">aces</text>
+<text x="466.3" y="236.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="11">0.1083 LSB  (+:1241 -:1063 0:0)</text>
+<rect x="460.0" y="250.0" width="0.3" height="14" rx="4" fill="#898781"/>
+<text x="190.0" y="262.0" text-anchor="end" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="12">dof_blur1</text>
+<text x="466.3" y="262.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="11">0.1215 LSB  (+:1116 -:1114 0:74)</text>
+<rect x="460.0" y="276.0" width="0.4" height="14" rx="4" fill="#898781"/>
+<text x="190.0" y="288.0" text-anchor="end" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="12">dof_blur2</text>
+<text x="466.4" y="288.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="11">0.1334 LSB  (+:1127 -:1109 0:68)</text>
+<rect x="460.0" y="302.0" width="0.8" height="14" rx="4" fill="#898781"/>
+<text x="190.0" y="314.0" text-anchor="end" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="12">dof_blur3</text>
+<text x="466.8" y="314.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="11">0.2834 LSB  (+:1087 -:1148 0:69)</text>
+<rect x="460.0" y="328.0" width="0.0" height="14" rx="4" fill="#898781"/>
+<text x="190.0" y="340.0" text-anchor="end" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="12">composite</text>
+<text x="466.0" y="340.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="11">0.0000 LSB  (+:920 -:921 0:463)</text>
+<rect x="460.0" y="354.0" width="0.0" height="14" rx="4" fill="#898781"/>
+<text x="190.0" y="366.0" text-anchor="end" fill="#0b0b0b" font-family="system-ui,sans-serif" font-size="12">sdr_q8</text>
+<text x="466.0" y="366.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="11">0.0000 LSB  (+:0 -:0 0:2304)</text>
+<rect x="200" y="399" width="14" height="14" rx="4" fill="#2a78d6"/>
+<text x="220.0" y="410.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="12">majority positive round-off (>=60%)</text>
+<rect x="460" y="399" width="14" height="14" rx="4" fill="#d03b3b"/>
+<text x="480.0" y="410.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="12">majority negative round-off (<=40%)</text>
+<rect x="720" y="399" width="14" height="14" rx="4" fill="#898781"/>
+<text x="740.0" y="410.0" text-anchor="start" fill="#52514e" font-family="system-ui,sans-serif" font-size="12">balanced / no local error</text>
+</svg>
